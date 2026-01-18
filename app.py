@@ -247,11 +247,325 @@ async def index(request):
     html_content = render_template('home.html')
     return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
 
-@app.route('/static/<path:path>')
-async def static_files(request, path):
-    """Sirve archivos estáticos"""
-    from microdot import send_file
-    return send_file(f'static/{path}')
+@app.route('/api/terminal/sessions', methods=['GET'])
+def list_terminal_sessions():
+    """Listar todas las sesiones de terminal activas"""
+    try:
+        sessions = []
+        for session_id, session in terminal_manager.sessions.items():
+            if session.active:
+                sessions.append({
+                    'session_id': session_id,
+                    'device_id': session.device_id,
+                    'created_at': time.time()
+                })
+        
+        return json.dumps({
+            'success': True,
+            'sessions': sessions
+        })
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/check', methods=['GET'])
+def check_dev_tools():
+    """Verificar disponibilidad de herramientas de desarrollo en el dispositivo"""
+    try:
+        # Verificar Python
+        python_check = subprocess.run(
+            ['adb', 'shell', 'python3 --version'],
+            capture_output=True, text=True, timeout=10
+        )
+        python_version = python_check.stdout.strip() if python_check.returncode == 0 else None
+        
+        # Verificar pip
+        pip_check = subprocess.run(
+            ['adb', 'shell', 'pip3 --version'],
+            capture_output=True, text=True, timeout=10
+        )
+        pip_version = pip_check.stdout.strip() if pip_check.returncode == 0 else None
+        
+        # Verificar virtualenv
+        venv_check = subprocess.run(
+            ['adb', 'shell', 'which virtualenv'],
+            capture_output=True, text=True, timeout=10
+        )
+        virtualenv_path = venv_check.stdout.strip() if venv_check.returncode == 0 else None
+        
+        # Verificar espacio disponible
+        space_check = subprocess.run(
+            ['adb', 'shell', "df -h /home/phablet | tail -1 | awk '{print $4}'"],
+            capture_output=True, text=True, timeout=10
+        )
+        available_space = space_check.stdout.strip() if space_check.returncode == 0 else None
+        
+        # Verificar memoria
+        memory_check = subprocess.run(
+            ['adb', 'shell', "free -h | grep '^Mem:' | awk '{print $7}'"],
+            capture_output=True, text=True, timeout=10
+        )
+        available_memory = memory_check.stdout.strip() if memory_check.returncode == 0 else None
+        
+        return json.dumps({
+            'success': True,
+            'tools': {
+                'python': {
+                    'available': python_version is not None,
+                    'version': python_version
+                },
+                'pip': {
+                    'available': pip_version is not None,
+                    'version': pip_version
+                },
+                'virtualenv': {
+                    'available': virtualenv_path is not None,
+                    'path': virtualenv_path
+                }
+            },
+            'resources': {
+                'disk_space': available_space,
+                'memory': available_memory
+            }
+        })
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/create_env', methods=['POST'])
+def create_virtual_env():
+    """Crear entorno virtual para desarrollo de apps web"""
+    try:
+        data = request.get_json()
+        app_name = data.get('app_name', '').strip()
+        framework = data.get('framework', 'microdot').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Validar nombre de app
+        if not re.match(r'^[a-zA-Z0-9_-]+$', app_name):
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app inválido. Solo letras, números, guiones y guiones bajos'
+            })
+        
+        # Comandos para crear entorno virtual
+        app_path = f"/home/phablet/webapps/{app_name}"
+        commands = [
+            f"mkdir -p {app_path}",
+            f"cd {app_path}",
+            "virtualenv venv",
+            "source venv/bin/activate"
+        ]
+        
+        # Instalar dependencias según framework
+        if framework == 'flask':
+            commands.extend([
+                "pip install flask gunicorn",
+                "pip install jinja2"
+            ])
+        elif framework == 'microdot':
+            commands.extend([
+                "pip install microdot",
+                "pip install jinja2"
+            ])
+        elif framework == 'fastapi':
+            commands.extend([
+                "pip install fastapi uvicorn",
+                "pip install jinja2"
+            ])
+        
+        # Ejecutar comandos
+        for cmd in commands:
+            result = subprocess.run(
+                ['adb', 'shell', cmd],
+                capture_output=True, text=True, timeout=30
+            )
+            if result.returncode != 0:
+                return json.dumps({
+                    'success': False,
+                    'error': f'Error en comando: {cmd}',
+                    'details': result.stderr
+                })
+        
+        # Crear archivo de configuración
+        config_content = f'''# App Configuration
+APP_NAME = "{app_name}"
+FRAMEWORK = "{framework}"
+APP_PATH = "{app_path}"
+PORT = 8081  # Puerto base, se puede incrementar
+
+# Dependencies
+if FRAMEWORK == "flask":
+    REQUIRED_PACKAGES = ["flask", "gunicorn", "jinja2"]
+elif FRAMEWORK == "microdot":
+    REQUIRED_PACKAGES = ["microdot", "jinja2"]
+elif FRAMEWORK == "fastapi":
+    REQUIRED_PACKAGES = ["fastapi", "uvicorn", "jinja2"]
+'''
+        
+        config_cmd = f"echo '{config_content}' > {app_path}/config.py"
+        subprocess.run(['adb', 'shell', config_cmd], timeout=10)
+        
+        return json.dumps({
+            'success': True,
+            'message': f'Entorno virtual creado para {app_name}',
+            'app_path': app_path,
+            'framework': framework,
+            'next_steps': [
+                f'Crea tu app en {app_path}/app.py',
+                'Activa el entorno: source venv/bin/activate',
+                'Inicia el servidor: python app.py'
+            ]
+        })
+        
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/list_apps', methods=['GET'])
+def list_web_apps():
+    """Listar apps web instaladas"""
+    try:
+        # Listar directorios en /home/phablet/webapps
+        result = subprocess.run(
+            ['adb', 'shell', 'ls -la /home/phablet/webapps/ 2>/dev/null || echo "No apps found"'],
+            capture_output=True, text=True, timeout=10
+        )
+        
+        if result.returncode != 0 or "No apps found" in result.stdout:
+            return json.dumps({
+                'success': True,
+                'apps': []
+            })
+        
+        # Parsear salida para obtener apps
+        apps = []
+        lines = result.stdout.strip().split('\n')
+        for line in lines:
+            if line.startswith('d') and '.' not in line.split()[-1]:  # Directorios que no empiezan con .
+                app_name = line.split()[-1]
+                
+                # Verificar si tiene entorno virtual
+                venv_check = subprocess.run(
+                    ['adb', 'shell', f'test -d /home/phablet/webapps/{app_name}/venv && echo "yes" || echo "no"'],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                # Leer configuración si existe
+                config_check = subprocess.run(
+                    ['adb', 'shell', f'test -f /home/phablet/webapps/{app_name}/config.py && cat /home/phablet/webapps/{app_name}/config.py || echo ""'],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                config = {}
+                if config_check.returncode == 0:
+                    for line in config_check.stdout.strip().split('\n'):
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            config[key.strip()] = value.strip().strip('"\'')
+                
+                apps.append({
+                    'name': app_name,
+                    'has_venv': venv_check.stdout.strip() == 'yes',
+                    'config': config,
+                    'path': f'/home/phablet/webapps/{app_name}'
+                })
+        
+        return json.dumps({
+            'success': True,
+            'apps': apps
+        })
+        
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/start_app', methods=['POST'])
+def start_web_app():
+    """Iniciar app web"""
+    try:
+        data = request.get_json()
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Verificar si la app existe
+        check_cmd = f"test -d /home/phablet/webapps/{app_name}"
+        check_result = subprocess.run(['adb', 'shell', check_cmd], timeout=5)
+        
+        if check_result.returncode != 0:
+            return json.dumps({
+                'success': False,
+                'error': f'App {app_name} no encontrada'
+            })
+        
+        # Iniciar app
+        start_cmd = f"cd /home/phablet/webapps/{app_name} && source venv/bin/activate && nohup python app.py > app.log 2>&1 &"
+        result = subprocess.run(['adb', 'shell', start_cmd], timeout=10)
+        
+        if result.returncode == 0:
+            return json.dumps({
+                'success': True,
+                'message': f'App {app_name} iniciada',
+                'access_url': f'http://localhost:8081'  # Esto debería ser dinámico
+            })
+        else:
+            return json.dumps({
+                'success': False,
+                'error': 'Error al iniciar la app',
+                'details': result.stderr
+            })
+            
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/stop_app', methods=['POST'])
+def stop_web_app():
+    """Detener app web"""
+    try:
+        data = request.get_json()
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Detener app (matar proceso python)
+        stop_cmd = f"pkill -f 'python.*{app_name}'"
+        result = subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
+        
+        return json.dumps({
+            'success': True,
+            'message': f'App {app_name} detenida'
+        })
+        
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
 
 # API Routes
 @app.route('/api/device/status')
