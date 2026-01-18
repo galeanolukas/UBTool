@@ -1,0 +1,268 @@
+/* UBTool Custom Styles - Ubuntu Touch Theme */
+
+:root {
+    --ub-orange: #E95420;
+    --ub-dark: #312D2A;
+    --ub-light: #FFFFFF;
+    --ub-gray: #AEA79F;
+    --ub-light-gray: #F7F3F0;
+    --ub-success: #4CAF50;
+    --ub-warning: #FF9800;
+    --ub-error: #f44336;
+}
+
+/* Base Styles */
+body {
+    background-color: var(--ub-dark);
+    color: var(--ub-light);
+    font-family: 'Ubuntu', 'Lato', 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+/* Ubuntu Orange Theme Overrides */
+.w3-orange {
+    background-color: var(--ub-orange) !important;
+}
+
+.w3-dark-gray {
+    background-color: var(--ub-dark) !important;
+}
+
+.w3-text-orange {
+    color: var(--ub-orange) !important;
+}
+
+.w3-border-orange {
+    border-color: var(--ub-orange) !important;
+}
+
+.w3-hover-orange:hover {
+    background-color: var(--ub-orange) !important;
+}
+
+/* Custom Components */
+.hero-section {
+    background: linear-gradient(135deg, var(--ub-dark) 0%, #2a2522 100%);
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+}
+
+.device-card {
+    background: rgba(49, 45, 42, 0.9);
+    border: 2px solid var(--ub-orange);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.device-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(233, 84, 32, 0.3);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+.status-connected {
+    background-color: var(--ub-success);
+}
+
+.status-disconnected {
+    background-color: var(--ub-error);
+}
+
+.status-connecting {
+    background-color: var(--ub-warning);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Buttons */
+.btn-ub {
+    background-color: var(--ub-orange);
+    color: var(--ub-light);
+    border: none;
+    padding: 12px 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-ub:hover {
+    background-color: #d64410;
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(233, 84, 32, 0.3);
+}
+
+.btn-ub:active {
+    transform: scale(0.98);
+}
+
+.btn-ub-secondary {
+    background-color: transparent;
+    color: var(--ub-orange);
+    border: 2px solid var(--ub-orange);
+}
+
+.btn-ub-secondary:hover {
+    background-color: var(--ub-orange);
+    color: var(--ub-light);
+}
+
+/* Cards */
+.ub-card {
+    background: rgba(49, 45, 42, 0.9);
+    border: 1px solid var(--ub-gray);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+}
+
+.ub-card:hover {
+    border-color: var(--ub-orange);
+    box-shadow: 0 5px 15px rgba(233, 84, 32, 0.2);
+}
+
+/* Forms */
+.ub-input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--ub-gray);
+    color: var(--ub-light);
+    padding: 12px;
+    border-radius: 4px;
+    width: 100%;
+    margin: 8px 0;
+    transition: all 0.3s ease;
+}
+
+.ub-input:focus {
+    outline: none;
+    border-color: var(--ub-orange);
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.ub-input::placeholder {
+    color: var(--ub-gray);
+}
+
+/* Navigation */
+.ub-nav {
+    background-color: var(--ub-dark);
+    border-bottom: 2px solid var(--ub-orange);
+    padding: 1rem 0;
+}
+
+.ub-nav-item {
+    color: var(--ub-light);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    margin: 0 0.5rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.ub-nav-item:hover {
+    background-color: var(--ub-orange);
+    color: var(--ub-light);
+}
+
+.ub-nav-item.active {
+    background-color: var(--ub-orange);
+    color: var(--ub-light);
+}
+
+/* Loading Spinner */
+.ub-spinner {
+    border: 3px solid var(--ub-gray);
+    border-top: 3px solid var(--ub-orange);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Alerts */
+.ub-alert {
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.ub-alert-success {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-left-color: var(--ub-success);
+    color: var(--ub-light);
+}
+
+.ub-alert-warning {
+    background-color: rgba(255, 152, 0, 0.1);
+    border-left-color: var(--ub-warning);
+    color: var(--ub-light);
+}
+
+.ub-alert-error {
+    background-color: rgba(244, 67, 54, 0.1);
+    border-left-color: var(--ub-error);
+    color: var(--ub-light);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 40vh;
+    }
+    
+    .device-card {
+        margin-bottom: 20px;
+    }
+    
+    .btn-ub {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
