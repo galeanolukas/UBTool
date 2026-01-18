@@ -15,6 +15,8 @@ import json
 import uuid
 import mimetypes
 import re
+import urllib.parse
+import base64
 from threading import Thread
 
 from microdot import Microdot
@@ -23,6 +25,11 @@ from microdot.cors import CORS
 
 # Import terminal manager
 from terminal_manager import TerminalManager
+
+try:
+    import humanize
+except Exception:
+    humanize = None
 
 app = Microdot()
 CORS(app, allowed_origins="*", allow_credentials=True)
@@ -459,6 +466,397 @@ def list_terminal_sessions():
             'error': str(e)
         })
 
+
+@app.route('/api/files/list')
+async def list_device_files(request):
+    """API: Listar archivos del dispositivo (File Manager)."""
+    try:
+        if not adb_manager.is_available():
+            return {'success': False, 'error': 'ADB no disponible'}
+
+        devices = adb_manager.get_devices()
+        if not devices:
+            return {'success': False, 'error': 'No hay dispositivos conectados'}
+
+        device_id = devices[0]['id']
+
+        qs = getattr(request, 'query_string', b'')
+        if isinstance(qs, (bytes, bytearray)):
+            qs = qs.decode('utf-8', errors='ignore')
+        params = urllib.parse.parse_qs(qs or '')
+        path = (params.get('path', [None])[0] or '/home/phablet').strip()
+        if not path.startswith('/'):
+            path = '/' + path
+
+        adb_bin = adb_manager.adb_path or 'adb'
+
+        py_code = (
+            "import os,sys,json\n"
+            "p=sys.argv[1] if len(sys.argv)>1 else '/home/phablet'\n"
+            "p=os.path.normpath(p)\n"
+            "out={'path':p,'parent':os.path.dirname(p) if p!='/' else None,'entries':[]}\n"
+            "try:\n"
+            "  with os.scandir(p) as it:\n"
+            "    for e in it:\n"
+            "      try:\n"
+            "        st=e.stat(follow_symlinks=False)\n"
+            "        size=int(st.st_size)\n"
+            "        mtime=int(st.st_mtime)\n"
+            "      except Exception:\n"
+            "        size=None; mtime=None\n"
+            "      out['entries'].append({'name':e.name,'is_dir':e.is_dir(follow_symlinks=False),'size':size,'mtime':mtime})\n"
+            "  out['entries'].sort(key=lambda x:(not x.get('is_dir',False), x.get('name','').lower()))\n"
+            "  print(json.dumps(out))\n"
+            "except Exception as ex:\n"
+            "  print(json.dumps({'error':str(ex),'path':p}), end='')\n"
+        )
+
+        result = subprocess.run(
+            [adb_bin, '-s', device_id, 'shell', 'python3', '-c', py_code, path],
+            capture_output=True,
+            text=True,
+            timeout=20
+        )
+
+        if result.returncode != 0:
+            return {
+                'success': False,
+                'error': (result.stderr or result.stdout or '').strip() or 'Error al listar archivos'
+            }
+
+        raw = (result.stdout or '').strip()
+        if raw:
+            try:
+                data = json.loads(raw)
+                if isinstance(data, dict) and data.get('error'):
+                    return {'success': False, 'error': data.get('error'), 'path': data.get('path')}
+
+                # Add human readable sizes
+                for e in data.get('entries', []) if isinstance(data, dict) else []:
+                    sz = e.get('size')
+                    if sz is None:
+                        e['size_human'] = None
+                    else:
+                        if humanize:
+                            e['size_human'] = humanize.naturalsize(sz, binary=True)
+                        else:
+                            e['size_human'] = str(sz)
+
+                return {'success': True, 'data': data}
+            except Exception:
+                # Fall through to ls fallback
+                pass
+
+        # If python3 produced no usable output, try to surface stderr and fallback to ls
+        stderr = (result.stderr or '').strip()
+
+        safe_path = path.replace("'", "'\\''")
+        ls_cmd = (
+            f"p='{safe_path}'; "
+            "ls -la \"$p\" 2>/dev/null || ls -la 2>/dev/null"
+        )
+        ls = subprocess.run(
+            [adb_bin, '-s', device_id, 'shell', ls_cmd],
+            capture_output=True,
+            text=True,
+            timeout=20
+        )
+
+        ls_out = (ls.stdout or '').splitlines()
+        if not ls_out:
+            err = (ls.stderr or stderr or '').strip() or 'Respuesta vacía del dispositivo'
+            return {'success': False, 'error': err}
+
+        entries = []
+        for line in ls_out:
+            line = line.rstrip('\n')
+            if not line or line.startswith('total'):
+                continue
+            parts = line.split(None, 8)
+            if len(parts) < 9:
+                continue
+            mode = parts[0]
+            name = parts[8]
+            try:
+                size = int(parts[4])
+            except Exception:
+                size = None
+            is_dir = mode.startswith('d')
+            if name in {'.', '..'}:
+                continue
+            item = {
+                'name': name,
+                'is_dir': is_dir,
+                'size': size,
+                'mtime': None
+            }
+            if size is not None:
+                item['size_human'] = humanize.naturalsize(size, binary=True) if humanize else str(size)
+            else:
+                item['size_human'] = None
+            entries.append(item)
+
+        payload = {
+            'path': path,
+            'parent': os.path.dirname(path) if path != '/' else None,
+            'entries': entries
+        }
+
+        if stderr:
+            payload['warning'] = stderr
+
+        return {'success': True, 'data': payload}
+    except subprocess.TimeoutExpired:
+        return {'success': False, 'error': 'Timeout al listar archivos'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+@app.route('/api/files/raw')
+async def get_device_file_raw(request):
+    """API: Obtener archivo del dispositivo como binario (viewer/descarga)."""
+    try:
+        from microdot import Response
+
+        if not adb_manager.is_available():
+            return Response(b'ADB no disponible', status_code=400)
+
+        devices = adb_manager.get_devices()
+        if not devices:
+            return Response(b'No hay dispositivos conectados', status_code=400)
+
+        device_id = devices[0]['id']
+
+        qs = getattr(request, 'query_string', b'')
+        if isinstance(qs, (bytes, bytearray)):
+            qs = qs.decode('utf-8', errors='ignore')
+        params = urllib.parse.parse_qs(qs or '')
+        path = (params.get('path', [None])[0] or '').strip()
+        if not path:
+            return Response(b'path requerido', status_code=400)
+
+        adb_bin = adb_manager.adb_path or 'adb'
+
+        safe_path = path.replace("'", "'\\''")
+        cat_cmd = f"cat '{safe_path}'"
+        result = subprocess.run(
+            [adb_bin, '-s', device_id, 'exec-out', 'sh', '-c', cat_cmd],
+            capture_output=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            msg = (result.stderr or b'').strip() or b'Error al leer archivo'
+            return Response(msg, status_code=404)
+
+        content_type, _ = mimetypes.guess_type(path)
+        if not content_type:
+            content_type = 'application/octet-stream'
+
+        return Response(result.stdout or b'', headers={'Content-Type': content_type})
+    except subprocess.TimeoutExpired:
+        from microdot import Response
+        return Response(b'Timeout al leer archivo', status_code=408)
+    except Exception as e:
+        from microdot import Response
+        return Response(str(e).encode('utf-8', errors='ignore'), status_code=500)
+
+
+@app.route('/api/files/text')
+async def get_device_file_text(request):
+    """API: Obtener archivo de texto del dispositivo (para editor)."""
+    try:
+        if not adb_manager.is_available():
+            return {'success': False, 'error': 'ADB no disponible'}
+
+        devices = adb_manager.get_devices()
+        if not devices:
+            return {'success': False, 'error': 'No hay dispositivos conectados'}
+
+        device_id = devices[0]['id']
+
+        qs = getattr(request, 'query_string', b'')
+        if isinstance(qs, (bytes, bytearray)):
+            qs = qs.decode('utf-8', errors='ignore')
+        params = urllib.parse.parse_qs(qs or '')
+        path = (params.get('path', [None])[0] or '').strip()
+        if not path:
+            return {'success': False, 'error': 'path requerido'}
+
+        # size limit (bytes)
+        max_bytes = 200_000
+
+        adb_bin = adb_manager.adb_path or 'adb'
+        safe_path = path.replace("'", "'\\''")
+        cmd = f"cat '{safe_path}'"
+        result = subprocess.run(
+            [adb_bin, '-s', device_id, 'exec-out', 'sh', '-c', cmd],
+            capture_output=True,
+            timeout=20
+        )
+
+        if result.returncode != 0:
+            err = (result.stderr or b'').decode('utf-8', errors='ignore').strip() or 'Error al leer archivo'
+            return {'success': False, 'error': err}
+
+        data = result.stdout or b''
+        if len(data) > max_bytes:
+            return {'success': False, 'error': f'Archivo demasiado grande para editar (>{max_bytes} bytes)'}
+
+        text = data.decode('utf-8', errors='replace')
+        mime, _ = mimetypes.guess_type(path)
+        return {'success': True, 'path': path, 'mime': mime or 'text/plain', 'content': text}
+    except subprocess.TimeoutExpired:
+        return {'success': False, 'error': 'Timeout al leer archivo'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+@app.route('/api/files/write', methods=['POST'])
+async def write_device_file_text(request):
+    """API: Guardar archivo de texto en el dispositivo."""
+    try:
+        if not adb_manager.is_available():
+            return {'success': False, 'error': 'ADB no disponible'}
+
+        devices = adb_manager.get_devices()
+        if not devices:
+            return {'success': False, 'error': 'No hay dispositivos conectados'}
+
+        device_id = devices[0]['id']
+        payload = request.json or {}
+        path = (payload.get('path') or '').strip()
+        content = payload.get('content')
+        if not path:
+            return {'success': False, 'error': 'path requerido'}
+        if content is None:
+            return {'success': False, 'error': 'content requerido'}
+
+        raw = content.encode('utf-8')
+        if len(raw) > 200_000:
+            return {'success': False, 'error': 'Contenido demasiado grande'}
+
+        b64 = base64.b64encode(raw).decode('ascii')
+        adb_bin = adb_manager.adb_path or 'adb'
+        safe_path = path.replace("'", "'\\''")
+
+        # Requires base64 on device
+        cmd = f"printf %s '{b64}' | base64 -d > '{safe_path}'"
+        result = subprocess.run(
+            [adb_bin, '-s', device_id, 'shell', 'sh', '-c', cmd],
+            capture_output=True,
+            text=True,
+            timeout=20
+        )
+
+        if result.returncode != 0:
+            err = (result.stderr or result.stdout or '').strip() or 'Error al guardar archivo'
+            return {'success': False, 'error': err}
+
+        return {'success': True, 'path': path}
+    except subprocess.TimeoutExpired:
+        return {'success': False, 'error': 'Timeout al guardar archivo'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+@app.route('/api/devtools/prepare_env', methods=['POST'])
+def prepare_dev_environment(request):
+    """Preparar entorno de desarrollo en el dispositivo (python3/pip/virtualenv)."""
+    try:
+        adb_bin = adb_manager.adb_path or 'adb'
+
+        def run_shell(cmd, timeout=60):
+            return subprocess.run([adb_bin, 'shell', cmd], capture_output=True, text=True, timeout=timeout)
+
+        details = {
+            'python': {'available': False, 'version': None},
+            'pip': {'available': False, 'version': None},
+            'virtualenv': {'available': False},
+            'actions': []
+        }
+
+        py = run_shell('python3 --version', timeout=15)
+        if py.returncode == 0 and (py.stdout or py.stderr):
+            details['python']['available'] = True
+            details['python']['version'] = (py.stdout or py.stderr).strip()
+        else:
+            return json.dumps({
+                'success': False,
+                'error': 'python3 no disponible en el dispositivo',
+                'details': details
+            })
+
+        # pip: prefer python3 -m pip
+        pip = run_shell('python3 -m pip --version', timeout=20)
+        if pip.returncode == 0 and (pip.stdout or pip.stderr):
+            details['pip']['available'] = True
+            details['pip']['version'] = (pip.stdout or pip.stderr).strip()
+        else:
+            # try ensurepip (may not exist on all builds)
+            ensure = run_shell('python3 -m ensurepip --user', timeout=60)
+            details['actions'].append({
+                'step': 'ensurepip',
+                'return_code': ensure.returncode,
+                'stdout': (ensure.stdout or '').strip(),
+                'stderr': (ensure.stderr or '').strip()
+            })
+
+            pip = run_shell('python3 -m pip --version', timeout=20)
+            if pip.returncode == 0 and (pip.stdout or pip.stderr):
+                details['pip']['available'] = True
+                details['pip']['version'] = (pip.stdout or pip.stderr).strip()
+
+        if not details['pip']['available']:
+            return json.dumps({
+                'success': False,
+                'error': 'pip no disponible (python3 -m pip falla y ensurepip no funcionó)',
+                'details': details
+            })
+
+        # Upgrade pip/setuptools/wheel (best effort)
+        up = run_shell('python3 -m pip install --user -U pip setuptools wheel', timeout=180)
+        details['actions'].append({
+            'step': 'upgrade_pip',
+            'return_code': up.returncode,
+            'stdout': (up.stdout or '').strip(),
+            'stderr': (up.stderr or '').strip()
+        })
+
+        # virtualenv
+        venv_check = run_shell('python3 -m virtualenv --version', timeout=15)
+        if venv_check.returncode == 0:
+            details['virtualenv']['available'] = True
+        else:
+            inst = run_shell('python3 -m pip install --user virtualenv', timeout=180)
+            details['actions'].append({
+                'step': 'install_virtualenv',
+                'return_code': inst.returncode,
+                'stdout': (inst.stdout or '').strip(),
+                'stderr': (inst.stderr or '').strip()
+            })
+
+            venv_check = run_shell('python3 -m virtualenv --version', timeout=15)
+            details['virtualenv']['available'] = venv_check.returncode == 0
+
+        if not details['virtualenv']['available']:
+            return json.dumps({
+                'success': False,
+                'error': 'virtualenv no se pudo instalar/verificar',
+                'details': details
+            })
+
+        return json.dumps({
+            'success': True,
+            'message': 'Entorno listo (python3/pip/virtualenv)',
+            'details': details
+        })
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
 @app.route('/api/devtools/check', methods=['GET'])
 def check_dev_tools():
     """Verificar disponibilidad de herramientas de desarrollo en el dispositivo"""
@@ -526,10 +924,10 @@ def check_dev_tools():
         })
 
 @app.route('/api/devtools/create_env', methods=['POST'])
-def create_virtual_env():
+def create_virtual_env(request):
     """Crear entorno virtual para desarrollo de apps web"""
     try:
-        data = request.get_json()
+        data = request.json or {}
         app_name = data.get('app_name', '').strip()
         framework = data.get('framework', 'microdot').strip()
         
@@ -548,41 +946,43 @@ def create_virtual_env():
         
         # Comandos para crear entorno virtual
         app_path = f"/home/phablet/webapps/{app_name}"
+        adb_bin = adb_manager.adb_path or 'adb'
+        venv_dir = f"{app_path}/venv"
+        venv_python = f"{venv_dir}/bin/python"
+        venv_pip = f"{venv_dir}/bin/pip"
         commands = [
             f"mkdir -p {app_path}",
-            f"cd {app_path}",
-            "virtualenv venv",
-            "source venv/bin/activate"
+            f"python3 -m virtualenv {venv_dir}",
         ]
         
         # Instalar dependencias según framework
         if framework == 'flask':
             commands.extend([
-                "pip install flask gunicorn",
-                "pip install jinja2"
+                f"{venv_pip} install flask gunicorn",
+                f"{venv_pip} install jinja2"
             ])
         elif framework == 'microdot':
             commands.extend([
-                "pip install microdot",
-                "pip install jinja2"
+                f"{venv_pip} install microdot",
+                f"{venv_pip} install jinja2"
             ])
         elif framework == 'fastapi':
             commands.extend([
-                "pip install fastapi uvicorn",
-                "pip install jinja2"
+                f"{venv_pip} install fastapi uvicorn",
+                f"{venv_pip} install jinja2"
             ])
         
         # Ejecutar comandos
         for cmd in commands:
             result = subprocess.run(
-                ['adb', 'shell', cmd],
-                capture_output=True, text=True, timeout=30
+                [adb_bin, 'shell', cmd],
+                capture_output=True, text=True, timeout=180
             )
             if result.returncode != 0:
                 return json.dumps({
                     'success': False,
                     'error': f'Error en comando: {cmd}',
-                    'details': result.stderr
+                    'details': (result.stderr or result.stdout)
                 })
         
         # Crear archivo de configuración
@@ -602,7 +1002,7 @@ elif FRAMEWORK == "fastapi":
 '''
         
         config_cmd = f"echo '{config_content}' > {app_path}/config.py"
-        subprocess.run(['adb', 'shell', config_cmd], timeout=10)
+        subprocess.run([adb_bin, 'shell', config_cmd], timeout=10)
         
         return json.dumps({
             'success': True,
@@ -812,8 +1212,71 @@ async def shell_command(request):
     return {
         'success': 'error' not in result,
         'output': result.get('output', ''),
-        'error': result.get('error')
+        'error': result.get('error'),
+        'return_code': result.get('return_code', 0)
     }
+
+@app.route('/api/device/open_url', methods=['POST'])
+async def open_url_on_device(request):
+    """API: Abrir una URL en el navegador por defecto del dispositivo Ubuntu Touch."""
+    try:
+        if not adb_manager.is_available():
+            return {'success': False, 'error': 'ADB no disponible'}
+
+        devices = adb_manager.get_devices()
+        if not devices:
+            return {'success': False, 'error': 'No hay dispositivos conectados'}
+
+        device_id = devices[0]['id']
+        data = request.json or {}
+        url = (data.get('url') or '').strip()
+        if not url:
+            return {'success': False, 'error': 'url requerida'}
+
+        # Basic validation
+        if not (url.startswith('http://') or url.startswith('https://')):
+            return {'success': False, 'error': 'url inválida (debe empezar con http:// o https://)'}
+
+        adb_bin = adb_manager.adb_path or 'adb'
+        safe_url = url.replace("'", "'\\''")
+
+        # Ubuntu Touch typically has url-dispatcher
+        candidates = [
+            f"url-dispatcher '{safe_url}'",
+            f"xdg-open '{safe_url}'",
+            f"/usr/bin/url-dispatcher '{safe_url}'",
+        ]
+
+        last = None
+        for cmd in candidates:
+            try:
+                last = subprocess.run(
+                    [adb_bin, '-s', device_id, 'shell', 'sh', '-c', cmd],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if last.returncode == 0:
+                    return {
+                        'success': True,
+                        'message': 'URL abierta en el dispositivo',
+                        'command': cmd
+                    }
+            except subprocess.TimeoutExpired:
+                last = None
+                continue
+
+        err = ''
+        if last is not None:
+            err = (last.stderr or last.stdout or '').strip()
+
+        return {
+            'success': False,
+            'error': err or 'No se pudo abrir la URL en el dispositivo',
+            'tried': candidates
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 
 @app.route('/api/device/reboot', methods=['POST'])
 async def reboot_device(request):

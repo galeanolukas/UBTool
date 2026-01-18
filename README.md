@@ -29,10 +29,16 @@ Si eres uno de los afortunados usuarios de Ubuntu Touch, sabes lo especial que e
 - Conexión ADB directa con tus dispositivos Ubuntu Touch
 - Gestión múltiple de dispositivos conectados simultáneamente
 - Terminal integrada con acceso real al shell del dispositivo
+- Botón para elevar privilegios a **root** desde la terminal (vía `sudo`)
 - Información detallada del sistema: batería, almacenamiento, red y más
+- File Manager: navegación por carpetas del dispositivo
+- Viewer/Editor: abre archivos de texto para editar y guarda cambios; previsualiza imágenes y reproduce videos desde el navegador
+- Herramientas para crear **WebApps en Python** en el dispositivo (Microdot/Flask/FastAPI) con entorno virtual
+- Abrir una URL en el **navegador por defecto del dispositivo** (ideal para probar WebApps)
 - Autoinstalable en Linux y Windows con un solo comando
 - Diseño responsive que se adapta a cualquier pantalla
 - Tiempo real con actualización automática del estado
+- Interfaz con **2 idiomas**: Español (por defecto) e Inglés (ES/EN)
 
 ## Inspirado en Ubuntu Touch
 
@@ -174,8 +180,16 @@ Para desarrolladores que quieran extender UBTool:
 - `GET /api/device/status` - Estado de conexión de dispositivos
 - `GET /api/device/info` - Información detallada del dispositivo
 - `POST /api/device/shell` - Ejecutar comandos shell
+- `POST /api/device/open_url` - Abrir una URL en el navegador por defecto del dispositivo
 - `POST /api/device/reboot` - Reiniciar dispositivo
 - `GET /api/adb/status` - Estado del servicio ADB
+
+### File Manager API:
+
+- `GET /api/files/list?path=/ruta` - Listar archivos y carpetas del dispositivo
+- `GET /api/files/raw?path=/ruta/archivo` - Leer archivo binario (viewer/descarga)
+- `GET /api/files/text?path=/ruta/archivo` - Leer archivo de texto (para editor)
+- `POST /api/files/write` - Guardar archivo de texto en el dispositivo
 
 ### Terminal API (Tiempo Real):
 
@@ -264,6 +278,12 @@ MIT License - Comparte, modifica y mejora libremente.
 - **Discusiones**: Comparte ideas y experiencias
 - **Wiki**: Documentación colaborativa
 - **Telegram**: Únete a la comunidad Ubuntu Touch
+
+## Apoya el proyecto
+
+Si UBTool te resulta útil y quieres apoyar el desarrollo, puedes invitarme un café:
+
+- https://buymeacoffee.com/lukasgaleano
 
 ## Agradecimientos
 
