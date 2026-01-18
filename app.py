@@ -2,6 +2,9 @@
 """
 UBTool - Ubuntu Touch Connection Tool
 Web app autoinstalable para conectar dispositivos Ubuntu Touch vía ADB
+
+Autor: Lukas Galeano <galeanolukas@gmail.com>
+Misión: Dar vida a Ubuntu Touch y ayudar a que el SO crezca y sea mantenido por la comunidad
 """
 
 import os

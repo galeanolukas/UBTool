@@ -49,15 +49,49 @@ echo 🎯 Creando script de inicio...
 echo @echo off > start_ubtool.bat
 echo cd /d "%%~dp0" >> start_ubtool.bat
 echo call ubtool_env\Scripts\activate.bat >> start_ubtool.bat
-echo python app.py >> start_ubtool.bat
+echo echo 🚀 Iniciando UBTool - Ubuntu Touch Connection Tool >> start_ubtool.bat
+echo echo 🌐 Iniciando servidor web... >> start_ubtool.bat
+echo start /B python app.py >> start_ubtool.bat
+echo timeout /t 3 /nobreak ^>nul >> start_ubtool.bat
+echo echo 🌍 Abriendo navegador... >> start_ubtool.bat
+echo start http://localhost:8080 >> start_ubtool.bat
+echo echo ✅ UBTool iniciado correctamente >> start_ubtool.bat
+echo echo 📱 Mantén esta ventana abierta para mantener UBTool funcionando >> start_ubtool.bat
+echo pause >> start_ubtool.bat
+
+REM Crear acceso directo en el escritorio
+echo 🖥️ Creando acceso directo en el escritorio...
+
+REM Obtener la ruta actual y del escritorio
+set "CURRENT_DIR=%CD%"
+set "SHORTCUT_PATH=%USERPROFILE%\Desktop\UBTool.lnk"
+
+REM Crear script VBScript temporal para generar el acceso directo
+echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
+echo sLinkFile = "%SHORTCUT_PATH%" >> CreateShortcut.vbs
+echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
+echo oLink.TargetPath = "%CURRENT_DIR%\start_ubtool.bat" >> CreateShortcut.vbs
+echo oLink.WorkingDirectory = "%CURRENT_DIR%" >> CreateShortcut.vbs
+echo oLink.Description = "UBTool - Ubuntu Touch Connection Tool" >> CreateShortcut.vbs
+echo oLink.IconLocation = "%CURRENT_DIR%\static\logo.png, 0" >> CreateShortcut.vbs
+echo oLink.Save >> CreateShortcut.vbs
+
+REM Ejecutar el script VBScript
+cscript //nologo CreateShortcut.vbs
+
+REM Limpiar script temporal
+del CreateShortcut.vbs
 
 echo.
 echo ✅ Instalación completada!
 echo.
 echo 🎉 Para iniciar UBTool:
-echo    start_ubtool.bat
+echo    • Doble clic en el acceso directo "UBTool" en tu escritorio
+echo    • O ejecuta: start_ubtool.bat
 echo.
-echo 🌐 La aplicación estará disponible en: http://localhost:8080
+echo 🌐 La aplicación se abrirá automáticamente en: http://localhost:8080
 echo 📱 Asegúrate de tener tu dispositivo Ubuntu Touch conectado vía USB
+echo.
+echo 💡 El acceso directo en el escritorio iniciará UBTool y abrirá tu navegador automáticamente
 echo.
 pause

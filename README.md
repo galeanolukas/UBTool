@@ -4,9 +4,24 @@
 
 Una herramienta web autoinstalable para conectar y gestionar dispositivos Ubuntu Touch vía ADB, diseñada con la pasión y los colores característicos de nuestra comunidad.
 
+**Autor:** Lukas Galeano <galeanolukas@gmail.com>
+
+## 🌟 Misión: Dar Vida a Ubuntu Touch
+
+Este proyecto nace con una visión clara: **dar vida a Ubuntu Touch y ayudar a que este sistema operativo crezca y sea mantenido por nuestra comunidad**. 
+
+Ubuntu Touch no es solo un sistema operativo móvil, es un sueño de libertad, un proyecto que demuestra que podemos tener alternativas reales y abiertas en el mundo móvil. Cada línea de código de UBTool está escrita con el propósito de:
+
+- 🌱 **Hacer crecer** el ecosistema Ubuntu Touch
+- 👥 **Fortalecer la comunidad** que lo mantiene vivo
+- 🔧 **Facilitar el desarrollo** y la gestión de dispositivos
+- 🚀 **Inspirar a más usuarios** a unirse a esta revolución
+
 ## ¿Por qué UBTool?
 
 Si eres uno de los afortunados usuarios de Ubuntu Touch, sabes lo especial que es este sistema operativo móvil basado en Linux. UBTool nace de la necesidad de tener una interfaz moderna y accesible para gestionar nuestros dispositivos directamente desde el navegador, sin complicaciones técnicas.
+
+**Nuestro objetivo es simple pero poderoso: que más personas puedan disfrutar, desarrollar y contribuir a Ubuntu Touch.**
 
 ## Características
 
@@ -51,20 +66,22 @@ cd UBTool
 git clone https://github.com/tu-usuario/UBTool.git
 cd UBTool
 
-# Ejecutar el instalador
+# Ejecutar el instalador mágico
 install.bat
 
-# Iniciar la aplicación
-start_ubtool.bat
+# ¡Listo! Doble clic en el acceso directo "UBTool" en tu escritorio
+# O ejecuta: start_ubtool.bat
 ```
 
 ### ¿Qué hace el instalador?
 
-1. Crea un entorno virtual Python aislado y seguro
-2. Instala todas las dependencias necesarias (Microdot, Jinja2, etc.)
-3. Verifica ADB y lo instala si es necesario
-4. Crea scripts de inicio para futuros usos
-5. Configura todo para que funcione out-of-the-box
+1. **Crea un entorno virtual** Python aislado y seguro
+2. **Instala todas las dependencias** necesarias (Microdot, Jinja2, etc.)
+3. **Verifica ADB** y lo instala si es necesario
+4. **Crea scripts de inicio** para futuros usos
+5. **Crea acceso directo** en el escritorio con icono Ubuntu Touch
+6. **Configura todo** para que funcione out-of-the-box
+7. **Inicia automáticamente** el navegador al ejecutar UBTool
 
 ## Empezando a Usar UBTool
 
@@ -250,14 +267,23 @@ MIT License - Comparte, modifica y mejora libremente.
 
 ## Agradecimientos
 
-A toda la comunidad **Ubuntu Touch** por mantener vivo el sueño de un móvil libre y abierto. A los desarrolladores que dedican su tiempo a construir un mejor ecosistema. A los usuarios que confían en software libre.
+Este proyecto es un homenaje a toda la comunidad **Ubuntu Touch** que mantiene vivo el sueño de un móvil libre y abierto. 
+
+A los desarrolladores de **UBPorts** que dedican su tiempo y conocimiento para construir un mejor ecosistema. A cada usuario que confía en el software libre y elige la libertad sobre la comodidad. A todos aquellos que creen que otro mundo móvil es posible.
+
+**Ubuntu Touch es más que código, es un movimiento.** Es la prueba de que cuando una comunidad se une con propósito, puede crear algo verdaderamente revolucionario.
 
 ---
 
-> **"Soy porque somos"** - UBTool es posible gracias a una comunidad apasionada
+> **"Soy porque somos"** - UBTool es posible gracias a una comunidad que no se rinde
 
-**Desarrollado con ❤️ para la comunidad Ubuntu Touch**
+**Desarrollado con ❤️ por Lukas Galeano para la comunidad Ubuntu Touch**
+**Contacto:** galeanolukas@gmail.com
+
+**Visión:** Un futuro donde Ubuntu Touch no solo sobreviva, sino prospere y crezca gracias al esfuerzo colectivo de una comunidad apasionada.
 
 ---
+
+*Este proyecto es mi contribución personal para dar vida a Ubuntu Touch y asegurar que este increíble sistema operativo móvil continúe creciendo y evolucionando con el apoyo de nuestra increíble comunidad.*
 
 *[Ubuntu Touch](https://ubuntu-touch.io/) • [UBPorts](https://ubports.com/) • [Comunidad](https://forums.ubports.com/)*
