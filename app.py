@@ -13,6 +13,8 @@ import sys
 import asyncio
 import json
 import uuid
+import mimetypes
+import re
 from threading import Thread
 
 from microdot import Microdot
@@ -114,6 +116,8 @@ class ADBManager:
             # Get device properties
             properties = [
                 ('model', 'ro.product.model'),
+                ('device_name', 'ro.product.name'),
+                ('device', 'ro.product.device'),
                 ('version', 'ro.build.version.release'),
                 ('serial', 'ro.serialno'),
                 ('manufacturer', 'ro.product.manufacturer'),
@@ -147,6 +151,38 @@ class ADBManager:
                     info['battery'] = 'N/A'
             except subprocess.TimeoutExpired:
                 info['battery'] = 'Timeout'
+
+            # Fallback for battery percentage (Ubuntu Touch / non-standard dumpsys)
+            if not info.get('battery') or info.get('battery') in {'N/A', 'Timeout'}:
+                fallback_battery = self._get_battery_percentage_sysfs(device_id)
+                if fallback_battery:
+                    info['battery'] = fallback_battery
+
+            # Get memory info
+            try:
+                result = subprocess.run([
+                    self.adb_path, '-s', device_id, 'shell',
+                    "free -h 2>/dev/null || free"
+                ], capture_output=True, text=True, timeout=10)
+                if result.returncode == 0 and result.stdout.strip():
+                    info['memory'] = self._parse_free_output(result.stdout)
+                else:
+                    info['memory'] = None
+            except subprocess.TimeoutExpired:
+                info['memory'] = None
+
+            # Get storage info
+            try:
+                result = subprocess.run([
+                    self.adb_path, '-s', device_id, 'shell',
+                    "df -h 2>/dev/null || df"
+                ], capture_output=True, text=True, timeout=10)
+                if result.returncode == 0 and result.stdout.strip():
+                    info['storage'] = self._parse_df_output(result.stdout)
+                else:
+                    info['storage'] = None
+            except subprocess.TimeoutExpired:
+                info['storage'] = None
             
             return info
             
@@ -157,14 +193,142 @@ class ADBManager:
     def _parse_battery_info(self, battery_output):
         """Parsea la información de la batería"""
         try:
-            lines = battery_output.split('\n')
-            for line in lines:
-                if 'level:' in line:
-                    level = line.split(':')[1].strip()
-                    return f"{level}%"
-            return 'N/A'
+            text = battery_output or ''
+            level = None
+            scale = None
+
+            # Common outputs:
+            # level: 44
+            # scale: 100
+            # or sometimes key=value
+            m_level = re.search(r'\blevel\b\s*[:=]\s*(\d+)', text, flags=re.IGNORECASE)
+            if m_level:
+                try:
+                    level = int(m_level.group(1))
+                except Exception:
+                    level = None
+
+            m_scale = re.search(r'\bscale\b\s*[:=]\s*(\d+)', text, flags=re.IGNORECASE)
+            if m_scale:
+                try:
+                    scale = int(m_scale.group(1))
+                except Exception:
+                    scale = None
+
+            # Some systems expose percentage directly
+            m_pct = re.search(r'\b(percent|percentage)\b\s*[:=]\s*(\d+)', text, flags=re.IGNORECASE)
+            if m_pct:
+                try:
+                    return f"{int(m_pct.group(2))}%"
+                except Exception:
+                    pass
+
+            if level is None:
+                return 'N/A'
+
+            if scale and scale > 0:
+                pct = round((level / scale) * 100)
+                return f"{pct}%"
+
+            return f"{level}%"
         except:
             return 'N/A'
+
+    def _get_battery_percentage_sysfs(self, device_id):
+        """Fallback: intenta leer porcentaje desde /sys/class/power_supply/*/capacity"""
+        try:
+            cmd = (
+                "cat /sys/class/power_supply/battery/capacity 2>/dev/null "
+                "|| cat /sys/class/power_supply/BAT0/capacity 2>/dev/null "
+                "|| (ls /sys/class/power_supply 2>/dev/null | while read d; do "
+                "cat /sys/class/power_supply/$d/capacity 2>/dev/null && break; "
+                "done)"
+            )
+            result = subprocess.run([
+                self.adb_path, '-s', device_id, 'shell', cmd
+            ], capture_output=True, text=True, timeout=5)
+
+            if result.returncode != 0:
+                return None
+
+            raw = (result.stdout or '').strip().splitlines()
+            if not raw:
+                return None
+
+            first = raw[0].strip()
+            if not first:
+                return None
+
+            m = re.search(r'(\d+)', first)
+            if not m:
+                return None
+
+            pct = int(m.group(1))
+            if pct < 0 or pct > 100:
+                return None
+
+            return f"{pct}%"
+        except Exception:
+            return None
+
+    def _parse_free_output(self, free_output):
+        try:
+            lines = [l.strip() for l in free_output.split('\n') if l.strip()]
+            mem_line = None
+            for l in lines:
+                if l.lower().startswith('mem:') or l.lower().startswith('mem '):
+                    mem_line = l
+                    break
+            if not mem_line:
+                return None
+
+            parts = mem_line.replace('\t', ' ').split()
+            if len(parts) < 4:
+                return None
+
+            def _safe_get(i):
+                return parts[i] if i < len(parts) else None
+
+            return {
+                'total': _safe_get(1),
+                'used': _safe_get(2),
+                'free': _safe_get(3),
+                'available': _safe_get(6) if len(parts) >= 7 else _safe_get(3)
+            }
+        except Exception:
+            return None
+
+    def _parse_df_output(self, df_output):
+        try:
+            lines = [l.rstrip() for l in df_output.split('\n') if l.strip()]
+            if not lines:
+                return None
+
+            out = []
+            for line in lines[1:]:
+                parts = line.split()
+                if len(parts) < 6:
+                    continue
+                out.append({
+                    'filesystem': parts[0],
+                    'size': parts[1],
+                    'used': parts[2],
+                    'avail': parts[3],
+                    'use_percent': parts[4],
+                    'mount': parts[5]
+                })
+
+            if not out:
+                return None
+
+            preferred_mounts = {'/data', '/userdata', '/', '/home', '/home/phablet'}
+            preferred = [e for e in out if e.get('mount') in preferred_mounts]
+            return {
+                'primary': preferred[0] if preferred else out[0],
+                'entries': out
+            }
+        except Exception:
+            return None
     
     def execute_shell_command(self, command, device_id=None):
         """Ejecuta un comando shell en el dispositivo"""
@@ -246,6 +410,31 @@ async def index(request):
     from microdot import Response
     html_content = render_template('home.html')
     return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
+
+
+@app.route('/static/<path:path>')
+def static_files(request, path):
+    """Servir archivos estáticos desde ./static"""
+    from microdot import Response
+
+    static_root = os.path.abspath('static')
+    requested_path = os.path.abspath(os.path.join(static_root, path))
+
+    # Prevent path traversal
+    if not (requested_path == static_root or requested_path.startswith(static_root + os.sep)):
+        return Response('Not found', status_code=404)
+
+    if not os.path.isfile(requested_path):
+        return Response('Not found', status_code=404)
+
+    content_type, _ = mimetypes.guess_type(requested_path)
+    if not content_type:
+        content_type = 'application/octet-stream'
+
+    with open(requested_path, 'rb') as f:
+        data = f.read()
+
+    return Response(data, headers={'Content-Type': content_type})
 
 @app.route('/api/terminal/sessions', methods=['GET'])
 def list_terminal_sessions():

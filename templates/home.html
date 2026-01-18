@@ -111,6 +111,8 @@
             height: 100%;
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 420px;
         }
         
         .device-card:hover {
@@ -215,6 +217,8 @@
             display: grid;
             gap: 2rem;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            justify-content: center;
+            justify-items: center;
         }
         
         /* Mobile Menu */
@@ -453,13 +457,21 @@
                 const data = await response.json();
                 
                 if (data.info) {
+                    const mem = data.info.memory;
+                    const storage = data.info.storage;
+                    const storagePrimary = storage && storage.primary ? storage.primary : null;
+
                     infoElement.innerHTML = `
                         <div style="text-align: left;">
+                            <strong>📛 Nombre:</strong> ${data.info.device_name || data.info.device || 'N/A'}<br>
+                            <strong>🏷️ Marca:</strong> ${data.info.brand || 'N/A'}<br>
                             <strong>📱 Modelo:</strong> ${data.info.model || 'N/A'}<br>
                             <strong>🔄 Versión:</strong> ${data.info.version || 'N/A'}<br>
                             <strong>🔢 Serial:</strong> ${data.info.serial || 'N/A'}<br>
                             <strong>🏭 Fabricante:</strong> ${data.info.manufacturer || 'N/A'}<br>
-                            <strong>🔋 Batería:</strong> ${data.info.battery || 'N/A'}
+                            <strong>🔋 Batería:</strong> ${data.info.battery || 'N/A'}<br>
+                            <strong>🧠 RAM:</strong> ${mem ? `${mem.used || 'N/A'} / ${mem.total || 'N/A'} (disp: ${mem.available || 'N/A'})` : 'N/A'}<br>
+                            <strong>💾 Almacenamiento:</strong> ${storagePrimary ? `${storagePrimary.used || 'N/A'} / ${storagePrimary.size || 'N/A'} (libre: ${storagePrimary.avail || 'N/A'}, ${storagePrimary.use_percent || 'N/A'})` : 'N/A'}
                         </div>
                     `;
                 } else {
@@ -558,11 +570,9 @@
                     // Start polling for output
                     terminalInterval = setInterval(pollTerminalOutput, 500);
                     
-                    // Show welcome message
+                    // Start with empty output
                     const output = document.getElementById('terminal-output');
-                    output.textContent = 'Conectado al shell del dispositivo Ubuntu Touch\r\n';
-                    output.textContent += 'Puedes ejecutar comandos directamente en el dispositivo.\r\n';
-                    output.textContent += 'Ejemplos: ls, cd, ps, getprop, etc.\r\n\r\n';
+                    output.textContent = '';
                 } else {
                     document.getElementById('device-status-terminal').textContent = 'Error: ' + data.error;
                     document.getElementById('session-id-terminal').textContent = 'N/A';
@@ -584,9 +594,6 @@
 
             const command = commandInput.value.trim();
             if (!command) return;
-
-            // Add command to output (for visual feedback)
-            output.textContent += `$ ${command}\r\n`;
             
             // Send command to terminal (without \r\n since manager adds it)
             try {
@@ -621,7 +628,17 @@
                 
                 if (data.success && data.output) {
                     const output = document.getElementById('terminal-output');
-                    output.textContent += data.output;
+                    let chunk = data.output;
+
+                    // Strip terminal control sequences (ANSI/OSC) that can show up as "0;user@host"
+                    // OSC: ESC ] ... BEL or ESC \
+                    chunk = chunk.replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '');
+                    // CSI: ESC [ ... letter
+                    chunk = chunk.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '');
+                    // Fallback: sometimes title text leaks without the ESC prefix
+                    chunk = chunk.replace(/(^|\r?\n)0;[^\r\n]*?(?=(\r?\n|$))/g, '$1');
+
+                    output.textContent += chunk;
                     output.scrollTop = output.scrollHeight;
                     
                     // Update status if session became inactive
