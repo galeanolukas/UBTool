@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UBTool - Ubuntu Touch Connection</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="/static/css/ubtool.css">
+    <style>
+        :root {
+            --ub-orange: #E95420;
+            --ub-dark: #312D2A;
+            --ub-light: #FFFFFF;
+            --ub-gray: #AEA79F;
+            --ub-light-gray: #F7F3F0;
+        }
+        
+        body {
+            background-color: var(--ub-dark);
+            color: var(--ub-light);
+            font-family: 'Ubuntu', 'Lato', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* Responsive Typography */
+        .hero-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .hero-subtitle {
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin: 1rem 0;
+        }
+        
+        /* Header Styles */
+        .header-container {
+            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(233, 84, 32, 0.3);
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logo {
+            width: clamp(40px, 8vw, 64px);
+            height: clamp(40px, 8vw, 64px);
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+        }
+        
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .logo-title {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: bold;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .logo-subtitle {
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, var(--ub-dark) 0%, #2a2522 50%, #1a1614 100%);
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            padding: 4rem 0;
+            position: relative;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="%23E95420" opacity="0.1"/></svg>');
+            background-size: 100px 100px;
+            opacity: 0.3;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Device Cards */
+        .device-card {
+            background: rgba(49, 45, 42, 0.95);
+            border: 2px solid var(--ub-orange);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .device-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(233, 84, 32, 0.4);
+            border-color: #FF6B35;
+        }
+        
+        .device-card h3 {
+            color: var(--ub-orange);
+            font-size: clamp(1.1rem, 3vw, 1.3rem);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .device-card p {
+            flex-grow: 1;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+            line-height: 1.6;
+        }
+        
+        /* Status Indicator */
+        .status-indicator {
+            width: clamp(10px, 2vw, 12px);
+            height: clamp(10px, 2vw, 12px);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        .status-connected { background-color: #4CAF50; }
+        .status-disconnected { background-color: #f44336; }
+        .status-connecting { background-color: var(--ub-warning); }
+        
+        /* Buttons */
+        .btn-ub {
+            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
+            color: var(--ub-light);
+            border: none;
+            padding: clamp(0.75rem, 2vw, 1rem) clamp(1.5rem, 3vw, 2rem);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: clamp(0.8rem, 2vw, 0.9rem);
+            box-shadow: 0 4px 15px rgba(233, 84, 32, 0.3);
+        }
+        
+        .btn-ub:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(233, 84, 32, 0.5);
+        }
+        
+        .btn-ub:active {
+            transform: translateY(0);
+        }
+        
+        /* Features Section */
+        .features-section {
+            padding: 4rem 0;
+            background: linear-gradient(180deg, var(--ub-dark) 0%, #2a2522 100%);
+        }
+        
+        .feature-card {
+            background: rgba(49, 45, 42, 0.8);
+            border: 1px solid var(--ub-gray);
+            border-radius: 12px;
+            padding: 2rem;
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--ub-orange);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(233, 84, 32, 0.2);
+        }
+        
+        .feature-icon {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+        }
+        
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
+            padding: 2rem 0;
+            text-align: center;
+        }
+        
+        /* Responsive Grid */
+        .responsive-grid {
+            display: grid;
+            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+        
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: var(--ub-orange);
+            border: none;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            .hero-section {
+                min-height: 50vh;
+                padding: 2rem 0;
+            }
+            
+            .device-card {
+                margin-bottom: 1.5rem;
+            }
+            
+            .btn-ub {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .mobile-menu {
+                display: block;
+            }
+            
+            .responsive-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header-container {
+                padding: 0.75rem 0;
+            }
+            
+            .logo-container {
+                gap: 0.5rem;
+            }
+            
+            .hero-section {
+                padding: 1rem 0;
+            }
+            
+            .device-card {
+                padding: 1rem;
+            }
+        }
+        
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--ub-light);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .mt-2 { margin-top: 2rem; }
+        .mb-2 { margin-bottom: 2rem; }
+        .w-full { width: 100%; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header-container">
+        <div class="w3-content">
+            <div class="logo-container">
+                <img src="/static/logo.png" alt="Ubuntu Touch Logo" class="logo">
+                <div class="logo-text">
+                    <h1 class="logo-title">UBTool</h1>
+                    <p class="logo-subtitle">Ubuntu Touch Connection Tool</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="w3-content">
+            <div class="hero-content text-center">
+                <h2 class="hero-title w3-text-orange">
+                    Conecta tu dispositivo Ubuntu Touch
+                </h2>
+                <p class="hero-subtitle">
+                    Herramienta web para gestionar la conexión ADB con tu dispositivo Ubuntu Touch
+                </p>
+                
+                <div class="responsive-grid mt-2 mb-2">
+                    <div class="device-card">
+                        <h3>
+                            <span class="status-indicator status-disconnected"></span>
+                            Estado del Dispositivo
+                        </h3>
+                        <p id="device-status">No conectado</p>
+                        <button class="btn-ub w-full" onclick="checkDevice()">
+                            Verificar Conexión
+                        </button>
+                    </div>
+                    
+                    <div class="device-card">
+                        <h3 class="w3-text-orange">Información del Sistema</h3>
+                        <p id="device-info">Esperando conexión...</p>
+                        <button class="btn-ub w-full" onclick="getDeviceInfo()">
+                            Obtener Info
+                        </button>
+                    </div>
+                    
+                    <div class="device-card">
+                        <h3 class="w3-text-orange">Herramientas Rápidas</h3>
+                        <p>Acceso rápido a funciones ADB</p>
+                        <div class="mt-2">
+                            <button class="btn-ub w-full" onclick="shellAccess()">
+                                🖥️ Shell
+                            </button>
+                            <button class="btn-ub w-full mt-2" onclick="rebootDevice()">
+                                🔄 Reiniciar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="w3-content">
+            <h2 class="text-center hero-title w3-text-orange mb-2">Características</h2>
+            
+            <div class="responsive-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3 class="w3-text-orange">Conexión ADB</h3>
+                    <p>Conecta y gestiona dispositivos Ubuntu Touch vía ADB con interfaz web moderna</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3 class="w3-text-orange">Gestión de Dispositivos</h3>
+                    <p>Visualiza y controla múltiples dispositivos conectados simultáneamente</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="w3-text-orange">Interfaz Web</h3>
+                    <p>Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🖥️</div>
+                    <h3 class="w3-text-orange">Terminal Integrada</h3>
+                    <p>Ejecuta comandos ADB directamente desde la interfaz web</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="w3-text-orange">Información Detallada</h3>
+                    <p>Obtén información completa del dispositivo: batería, almacenamiento, red y más</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3 class="w3-text-orange">Autoinstalable</h3>
+                    <p>Instalación automática en Linux y Windows con configuración del entorno</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="w3-content">
+            <p>&copy; 2024 UBTool - Ubuntu Touch Connection Tool</p>
+            <p class="mt-2" style="opacity: 0.8; font-size: 0.9rem;">
+                Desarrollado con ❤️ para la comunidad Ubuntu Touch
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Funciones JavaScript para interactuar con la API
+        async function checkDevice() {
+            const statusElement = document.getElementById('device-status');
+            const statusIndicator = document.querySelector('.status-indicator');
+            
+            // Show loading
+            statusElement.innerHTML = '<span class="loading-spinner"></span> Verificando...';
+            statusIndicator.className = 'status-indicator status-connecting';
+            
+            try {
+                const response = await fetch('/api/device/status');
+                const data = await response.json();
+                
+                if (data.connected) {
+                    statusElement.textContent = `Conectado - ${data.device || 'Dispositivo'}`;
+                    statusIndicator.className = 'status-indicator status-connected';
+                } else {
+                    statusElement.textContent = 'No conectado';
+                    statusIndicator.className = 'status-indicator status-disconnected';
+                }
+            } catch (error) {
+                console.error('Error checking device:', error);
+                statusElement.textContent = 'Error al verificar';
+                statusIndicator.className = 'status-indicator status-disconnected';
+            }
+        }
+        
+        async function getDeviceInfo() {
+            const infoElement = document.getElementById('device-info');
+            
+            // Show loading
+            infoElement.innerHTML = '<span class="loading-spinner"></span> Obteniendo información...';
+            
+            try {
+                const response = await fetch('/api/device/info');
+                const data = await response.json();
+                
+                if (data.info) {
+                    infoElement.innerHTML = `
+                        <div style="text-align: left;">
+                            <strong>📱 Modelo:</strong> ${data.info.model || 'N/A'}<br>
+                            <strong>🔄 Versión:</strong> ${data.info.version || 'N/A'}<br>
+                            <strong>🔢 Serial:</strong> ${data.info.serial || 'N/A'}<br>
+                            <strong>🏭 Fabricante:</strong> ${data.info.manufacturer || 'N/A'}<br>
+                            <strong>🔋 Batería:</strong> ${data.info.battery || 'N/A'}
+                        </div>
+                    `;
+                } else {
+                    infoElement.textContent = 'No hay información disponible';
+                }
+            } catch (error) {
+                console.error('Error getting device info:', error);
+                infoElement.textContent = 'Error al obtener información';
+            }
+        }
+        
+        function shellAccess() {
+            createRealTerminalModal();
+        }
+        
+        function createRealTerminalModal() {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 800px; width: 95%; max-height: 90vh; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: var(--ub-orange); margin: 0;">🖥️ Terminal Ubuntu Touch - Shell del Dispositivo</h3>
+                        <button onclick="closeTerminal()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                    </div>
+                    <div style="background: rgba(233, 84, 32, 0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                        <strong style="color: var(--ub-orange);">ℹ️ Conectado al shell del dispositivo Ubuntu Touch</strong><br>
+                        <span style="opacity: 0.8;">Ejecuta comandos directamente en el dispositivo. Ejemplos:</span><br>
+                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ls -la</code> • 
+                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">cd ~/Documents</code> • 
+                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ps aux</code> • 
+                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">getprop</code>
+                    </div>
+                    <div id="terminal-output" style="background: #000; color: #0f0; padding: 1rem; border-radius: 8px; height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin-bottom: 1rem; white-space: pre-wrap;"></div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="terminal-command" placeholder="Escribe un comando del shell del dispositivo..." style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 4px; font-family: 'Courier New', monospace;">
+                        <button onclick="sendTerminalCommand()" class="btn-ub">Enviar</button>
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+                        Estado: <span id="device-status-terminal">Verificando...</span> | 
+                        Sesión: <span id="session-id-terminal">No iniciada</span>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize terminal
+            initializeTerminal();
+            
+            // Focus on input
+            setTimeout(() => {
+                document.getElementById('terminal-command').focus();
+            }, 100);
+
+            // Handle Enter key
+            document.getElementById('terminal-command').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendTerminalCommand();
+                }
+            });
+        }
+        
+        let terminalSessionId = null;
+        let terminalInterval = null;
+        
+        async function initializeTerminal() {
+            try {
+                // Create terminal session
+                const response = await fetch('/api/terminal/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    terminalSessionId = data.session_id;
+                    document.getElementById('device-status-terminal').textContent = 'Conectado al dispositivo';
+                    document.getElementById('session-id-terminal').textContent = data.session_id.substring(0, 12) + '...';
+                    
+                    // Start polling for output
+                    terminalInterval = setInterval(pollTerminalOutput, 500);
+                    
+                    // Show welcome message
+                    const output = document.getElementById('terminal-output');
+                    output.textContent = 'Conectado al shell del dispositivo Ubuntu Touch\r\n';
+                    output.textContent += 'Puedes ejecutar comandos directamente en el dispositivo.\r\n';
+                    output.textContent += 'Ejemplos: ls, cd, ps, getprop, etc.\r\n\r\n';
+                } else {
+                    document.getElementById('device-status-terminal').textContent = 'Error: ' + data.error;
+                    document.getElementById('session-id-terminal').textContent = 'N/A';
+                    document.getElementById('terminal-output').textContent = 'Error al conectar terminal: ' + data.error;
+                }
+            } catch (error) {
+                console.error('Error initializing terminal:', error);
+                document.getElementById('device-status-terminal').textContent = 'Error de conexión';
+                document.getElementById('session-id-terminal').textContent = 'N/A';
+                document.getElementById('terminal-output').textContent = 'Error al inicializar terminal';
+            }
+        }
+        
+        async function sendTerminalCommand() {
+            const commandInput = document.getElementById('terminal-command');
+            const output = document.getElementById('terminal-output');
+            
+            if (!commandInput || !terminalSessionId) return;
+
+            const command = commandInput.value.trim();
+            if (!command) return;
+
+            // Add command to output (for visual feedback)
+            output.textContent += `$ ${command}\r\n`;
+            
+            // Send command to terminal (without \r\n since manager adds it)
+            try {
+                const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ input: command })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    output.textContent += `Error: ${data.error}\r\n`;
+                }
+            } catch (error) {
+                output.textContent += `Error de conexión: ${error.message}\r\n`;
+            }
+
+            // Clear input and scroll to bottom
+            commandInput.value = '';
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        async function pollTerminalOutput() {
+            if (!terminalSessionId) return;
+            
+            try {
+                const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
+                const data = await response.json();
+                
+                if (data.success && data.output) {
+                    const output = document.getElementById('terminal-output');
+                    output.textContent += data.output;
+                    output.scrollTop = output.scrollHeight;
+                    
+                    // Update status if session became inactive
+                    if (!data.active) {
+                        document.getElementById('device-status-terminal').textContent = 'Desconectado';
+                        clearInterval(terminalInterval);
+                        terminalInterval = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling terminal:', error);
+            }
+        }
+        
+        function closeTerminal() {
+            if (terminalInterval) {
+                clearInterval(terminalInterval);
+                terminalInterval = null;
+            }
+            
+            if (terminalSessionId) {
+                // Close terminal session
+                fetch(`/api/terminal/${terminalSessionId}/close`, {
+                    method: 'POST'
+                }).catch(console.error);
+                terminalSessionId = null;
+            }
+            
+            // Remove modal
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function rebootDevice() {
+            if (confirm('¿Estás seguro de que quieres reiniciar el dispositivo?')) {
+                // Implement reboot functionality
+                alert('Reiniciando dispositivo - Esta función estará disponible próximamente');
+            }
+        }
+        
+        // Verificar conexión al cargar la página
+        window.onload = function() {
+            checkDevice();
+        };
+        
+        // Auto-refresh device status every 30 seconds
+        setInterval(checkDevice, 30000);
+    </script>
+</body>
+</html>
