@@ -1,5 +1,69 @@
 // Common functions for UBTool - included in all pages
 
+// Sidebar functionality
+let sidebarTimeout;
+let isSidebarOpen = false;
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    
+    // Check if elements exist before trying to manipulate them
+    if (!sidebar) {
+        console.warn('Sidebar element not found');
+        return;
+    }
+    
+    if (isSidebarOpen) {
+        sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('active');
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        isSidebarOpen = false;
+        clearSidebarTimeout();
+    } else {
+        sidebar.classList.add('open');
+        if (overlay) overlay.classList.add('active');
+        if (toggleBtn) toggleBtn.classList.add('active');
+        isSidebarOpen = true;
+        startSidebarTimeout();
+    }
+}
+
+function startSidebarTimeout() {
+    clearSidebarTimeout();
+    sidebarTimeout = setTimeout(() => {
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }, 5000); // Auto-hide after 5 seconds
+}
+
+function clearSidebarTimeout() {
+    if (sidebarTimeout) {
+        clearTimeout(sidebarTimeout);
+        sidebarTimeout = null;
+    }
+}
+
+// Initialize sidebar event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.addEventListener('mouseenter', () => {
+            if (isSidebarOpen) {
+                clearSidebarTimeout();
+            }
+        });
+        
+        sidebar.addEventListener('mouseleave', () => {
+            if (isSidebarOpen) {
+                startSidebarTimeout();
+            }
+        });
+    }
+});
+
 // File Manager Functions
 function getFileIcon(name, isDir) {
     if (isDir) {
@@ -302,6 +366,25 @@ function createWebAppModal() {
                 </div>
                 
                 <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;" data-i18n="webapps.create.icon.title">
+                        🎨 Icono de la App (opcional):
+                    </label>
+                    <input 
+                        type="file" 
+                        id="webapp-icon" 
+                        accept="image/*"
+                        style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
+                        onchange="previewIcon(this)"
+                    />
+                    <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; display: block;" data-i18n="webapps.create.icon.hint">
+                        Formatos: PNG, JPG, SVG. Se redimensionará automáticamente a 64x64px
+                    </small>
+                    <div id="icon-preview" style="margin-top: 0.5rem; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                        <div style="color: var(--ub-gray); font-size: 0.9rem;" data-i18n="webapps.create.icon.no_selection">No hay icono seleccionado</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
                     <div style="background: rgba(233,84,32,0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 1rem;">
                         <h5 style="color: var(--ub-orange); margin: 0 0 0.5rem 0; font-size: 0.9rem;">🌍 Entorno Virtual Global</h5>
                         <p style="margin: 0; color: var(--ub-light); font-size: 0.85rem; line-height: 1.4;">
@@ -342,6 +425,31 @@ function createWebAppModal() {
     }, 100);
 }
 
+function previewIcon(input) {
+    const preview = document.getElementById('icon-preview');
+    if (!preview) return;
+    
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `
+                <img src="${e.target.result}" style="max-width: 64px; max-height: 64px; border-radius: 8px; border: 2px solid var(--ub-orange);" />
+                <div style="margin-top: 0.5rem; color: var(--ub-light); font-size: 0.8rem;">
+                    ${file.name} (${(file.size / 1024).toFixed(1)} KB)
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        const currentLang = getCurrentLanguage ? getCurrentLanguage() : 'es';
+        const noIconText = UBTOOL_I18N && UBTOOL_I18N[currentLang] ? 
+            UBTOOL_I18N[currentLang]['webapps.create.icon.no_selection'] : 
+            'No hay icono seleccionado';
+        preview.innerHTML = `<div style="color: var(--ub-gray); font-size: 0.9rem;">${noIconText}</div>`;
+    }
+}
+
 function closeWebAppModal() {
     const modal = document.getElementById('webapp-create-modal');
     if (modal) {
@@ -354,6 +462,7 @@ async function createWebApp(event) {
     
     const name = document.getElementById('webapp-name').value.trim();
     const framework = document.getElementById('webapp-framework').value;
+    const iconInput = document.getElementById('webapp-icon');
     const statusDiv = document.getElementById('webapp-create-status');
     const submitBtn = document.getElementById('create-webapp-btn');
     
@@ -368,15 +477,19 @@ async function createWebApp(event) {
     statusDiv.innerHTML = '<p style="color: var(--ub-orange);">🔄 Creando aplicación web...</p>';
     
     try {
+        // Use FormData to support file upload
+        const formData = new FormData();
+        formData.append('app_name', name);
+        formData.append('framework', framework);
+        
+        // Add icon file if selected
+        if (iconInput.files && iconInput.files[0]) {
+            formData.append('icon', iconInput.files[0]);
+        }
+        
         const response = await fetch('/api/devtools/create_env', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                app_name: name,
-                framework: framework
-            })
+            body: formData
         });
         
         const data = await response.json();

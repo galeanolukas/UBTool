@@ -369,6 +369,9 @@
     {% include 'topbar.html' %}
     {% include 'sidebar.html' %}
     
+    <!-- Sidebar overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    
     <main>
         {% block content %}{% endblock %}
     </main>

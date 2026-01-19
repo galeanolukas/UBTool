@@ -39,9 +39,6 @@
 </style>
 {% endblock %}
 
-<!-- Sidebar overlay -->
-<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
-
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section" style="background: linear-gradient(135deg, var(--ub-dark) 0%, #2c2c2c 100%); padding: 4rem 0; text-align: center;">
@@ -115,16 +112,16 @@
             <div style="flex: 1; min-width: 300px; max-width: 350px;">
                 <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
                     <div style="font-size: 3rem; margin-bottom: 1.5rem;">📁</div>
-                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;">File Manager</h3>
-                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;">Explora y gestiona archivos del dispositivo con interfaz intuitiva</p>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.files.title">File Manager</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.files.desc">Explora y gestiona archivos del dispositivo con interfaz intuitiva</p>
                 </div>
             </div>
             
             <div style="flex: 1; min-width: 300px; max-width: 350px;">
                 <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
                     <div style="font-size: 3rem; margin-bottom: 1.5rem;">🚀</div>
-                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;">Web Apps</h3>
-                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;">Crea y gestiona aplicaciones web con Click y prepara para deployment</p>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.webapps.title">Web Apps</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.webapps.desc">Crea y gestiona aplicaciones web con Click y prepara para deployment</p>
                 </div>
             </div>
         </div>
@@ -198,6 +195,15 @@
             'features.devices.desc': 'Visualiza y controla múltiples dispositivos conectados simultáneamente',
             'features.web.title': 'Interfaz Web',
             'features.web.desc': 'Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch',
+            'features.terminal.title': 'Terminal Integrada',
+            'features.terminal.desc': 'Ejecuta comandos ADB directamente desde la interfaz web',
+            'features.files.title': 'Gestor de Archivos',
+            'features.files.desc': 'Explora y gestiona archivos del dispositivo con interfaz intuitiva',
+            'features.webapps.title': 'Aplicaciones Web',
+            'features.webapps.desc': 'Crea y gestiona aplicaciones web con Click y prepara para deployment',
+            'webapps.create.icon.title': '🎨 Icono de la App (opcional)',
+            'webapps.create.icon.hint': 'Formatos: PNG, JPG, SVG. Se redimensionará automáticamente a 64x64px',
+            'webapps.create.icon.no_selection': 'No hay icono seleccionado',
             'footer.about': 'Acerca de UBTool',
             'footer.description': 'Herramienta moderna para gestionar dispositivos Ubuntu Touch vía ADB con interfaz web intuitiva.',
             'footer.support': 'Apoya el proyecto',
@@ -268,6 +274,13 @@
             'features.web.desc': 'Access from any modern browser with responsive design and Ubuntu Touch styling',
             'features.terminal.title': 'Integrated Terminal',
             'features.terminal.desc': 'Execute ADB commands directly from the web interface',
+            'features.files.title': 'File Manager',
+            'features.files.desc': 'Explore and manage device files with intuitive interface',
+            'features.webapps.title': 'Web Apps',
+            'features.webapps.desc': 'Create and manage web applications with Click and prepare for deployment',
+            'webapps.create.icon.title': '🎨 App Icon (optional)',
+            'webapps.create.icon.hint': 'Formats: PNG, JPG, SVG. Will be automatically resized to 64x64px',
+            'webapps.create.icon.no_selection': 'No icon selected',
             'footer.description': 'Complete tool for managing Ubuntu Touch devices via ADB',
             'footer.resources.title': '📚 Resources',
             'footer.resources.github': 'GitHub',
@@ -1081,64 +1094,6 @@
     // Note: Development environment preparation moved to dedicated /dev-env page
 
     // Note: Apps management moved to dedicated /apps page
-
-    // Sidebar Functions
-    let sidebarTimeout;
-    let isSidebarOpen = false;
-
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        const toggleBtn = document.getElementById('sidebar-toggle');
-        
-        if (isSidebarOpen) {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
-            toggleBtn.classList.remove('active');
-            isSidebarOpen = false;
-            clearSidebarTimeout();
-        } else {
-            sidebar.classList.add('open');
-            overlay.classList.add('active');
-            toggleBtn.classList.add('active');
-            isSidebarOpen = true;
-            startSidebarTimeout();
-        }
-    }
-
-    function startSidebarTimeout() {
-        clearSidebarTimeout();
-        sidebarTimeout = setTimeout(() => {
-            if (isSidebarOpen) {
-                toggleSidebar();
-            }
-        }, 5000); // Auto-hide after 5 seconds
-    }
-
-    function clearSidebarTimeout() {
-        if (sidebarTimeout) {
-            clearTimeout(sidebarTimeout);
-            sidebarTimeout = null;
-        }
-    }
-
-    // Reset timeout on mouse movement over sidebar
-    document.addEventListener('DOMContentLoaded', () => {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) {
-            sidebar.addEventListener('mouseenter', () => {
-                if (isSidebarOpen) {
-                    clearSidebarTimeout();
-                }
-            });
-            
-            sidebar.addEventListener('mouseleave', () => {
-                if (isSidebarOpen) {
-                    startSidebarTimeout();
-                }
-            });
-        }
-    });
 
     function showDeviceInfo() {
         // Scroll to device info section
