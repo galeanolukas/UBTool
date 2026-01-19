@@ -467,6 +467,45 @@ def list_terminal_sessions():
         })
 
 
+@app.route('/api/devtools/venv_status')
+async def venv_status(request):
+    """API: Verificar estado del entorno virtual global"""
+    try:
+        # Verificar si el directorio del venv global existe
+        check_cmd = "test -d /home/phablet/.ubtool/venv && echo 'exists' || echo 'not_exists'"
+        result = subprocess.run(['adb', 'shell', check_cmd], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0 and 'exists' in result.stdout:
+            # Verificar si python está disponible en el venv
+            python_check = "test -f /home/phablet/.ubtool/venv/bin/python && echo 'ready' || echo 'incomplete'"
+            python_result = subprocess.run(['adb', 'shell', python_check], capture_output=True, text=True, timeout=10)
+            
+            if python_result.returncode == 0 and 'ready' in python_result.stdout:
+                return json.dumps({
+                    'success': True,
+                    'status': 'ready',
+                    'message': 'Entorno global listo'
+                })
+            else:
+                return json.dumps({
+                    'success': True,
+                    'status': 'incomplete',
+                    'message': 'Entorno global incompleto'
+                })
+        else:
+            return json.dumps({
+                'success': True,
+                'status': 'not_created',
+                'message': 'Entorno global no creado'
+            })
+            
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+
 @app.route('/api/files/list')
 async def list_device_files(request):
     """API: Listar archivos del dispositivo (File Manager)."""
@@ -766,6 +805,9 @@ def prepare_dev_environment(request):
     try:
         adb_bin = adb_manager.adb_path or 'adb'
 
+        global_venv_dir = '/home/phablet/.ubtool/venv'
+        global_venv_pip = f'{global_venv_dir}/bin/pip'
+
         def run_shell(cmd, timeout=60):
             return subprocess.run([adb_bin, 'shell', cmd], capture_output=True, text=True, timeout=timeout)
 
@@ -846,10 +888,55 @@ def prepare_dev_environment(request):
                 'details': details
             })
 
+        # Global venv (shared across all webapps)
+        mk = run_shell("mkdir -p /home/phablet/.ubtool", timeout=20)
+        details['actions'].append({
+            'step': 'mkdir_global_dir',
+            'return_code': mk.returncode,
+            'stdout': (mk.stdout or '').strip(),
+            'stderr': (mk.stderr or '').strip()
+        })
+
+        # Create venv if it does not exist
+        venv_exists = run_shell(f"test -x {global_venv_dir}/bin/python && echo yes || echo no", timeout=10)
+        if (venv_exists.stdout or '').strip() != 'yes':
+            mkvenv = run_shell(f"python3 -m virtualenv {global_venv_dir}", timeout=180)
+            details['actions'].append({
+                'step': 'create_global_venv',
+                'return_code': mkvenv.returncode,
+                'stdout': (mkvenv.stdout or '').strip(),
+                'stderr': (mkvenv.stderr or '').strip()
+            })
+            if mkvenv.returncode != 0:
+                return json.dumps({
+                    'success': False,
+                    'error': 'No se pudo crear el entorno virtual global',
+                    'details': details
+                })
+
+        # Upgrade pip/setuptools/wheel inside venv
+        up_venv = run_shell(f"{global_venv_pip} install -U pip setuptools wheel", timeout=180)
+        details['actions'].append({
+            'step': 'upgrade_global_venv_pip',
+            'return_code': up_venv.returncode,
+            'stdout': (up_venv.stdout or '').strip(),
+            'stderr': (up_venv.stderr or '').strip()
+        })
+
+        # Install shared frameworks (best effort)
+        install_fw = run_shell(f"{global_venv_pip} install -U microdot jinja2 flask gunicorn fastapi uvicorn", timeout=300)
+        details['actions'].append({
+            'step': 'install_frameworks_global_venv',
+            'return_code': install_fw.returncode,
+            'stdout': (install_fw.stdout or '').strip(),
+            'stderr': (install_fw.stderr or '').strip()
+        })
+
         return json.dumps({
             'success': True,
-            'message': 'Entorno listo (python3/pip/virtualenv)',
-            'details': details
+            'message': 'Entorno listo (python3/pip/virtualenv + venv global)',
+            'details': details,
+            'global_venv': global_venv_dir
         })
     except Exception as e:
         return json.dumps({
@@ -925,7 +1012,7 @@ def check_dev_tools():
 
 @app.route('/api/devtools/create_env', methods=['POST'])
 def create_virtual_env(request):
-    """Crear entorno virtual para desarrollo de apps web"""
+    """Crear app web usando un entorno virtual global (compartido)."""
     try:
         data = request.json or {}
         app_name = data.get('app_name', '').strip()
@@ -944,33 +1031,37 @@ def create_virtual_env(request):
                 'error': 'Nombre de app inválido. Solo letras, números, guiones y guiones bajos'
             })
         
-        # Comandos para crear entorno virtual
-        app_path = f"/home/phablet/webapps/{app_name}"
         adb_bin = adb_manager.adb_path or 'adb'
-        venv_dir = f"{app_path}/venv"
-        venv_python = f"{venv_dir}/bin/python"
-        venv_pip = f"{venv_dir}/bin/pip"
+        global_venv_dir = '/home/phablet/.ubtool/venv'
+        global_venv_python = f"{global_venv_dir}/bin/python"
+        global_venv_pip = f"{global_venv_dir}/bin/pip"
+
+        # App path (no per-app venv)
+        app_path = f"/home/phablet/Apps/{app_name}"
+
+        # Ensure global venv exists
+        chk = subprocess.run(
+            [adb_bin, 'shell', f"test -x {global_venv_python}"],
+            capture_output=True, text=True, timeout=10
+        )
+        if chk.returncode != 0:
+            return json.dumps({
+                'success': False,
+                'error': 'Entorno global no encontrado. Ejecuta primero: Preparar entorno',
+                'global_venv': global_venv_dir
+            })
+
         commands = [
             f"mkdir -p {app_path}",
-            f"python3 -m virtualenv {venv_dir}",
         ]
-        
-        # Instalar dependencias según framework
+
+        # Ensure required deps exist in global venv (best effort, idempotent)
         if framework == 'flask':
-            commands.extend([
-                f"{venv_pip} install flask gunicorn",
-                f"{venv_pip} install jinja2"
-            ])
+            commands.append(f"{global_venv_pip} install -U flask gunicorn jinja2")
         elif framework == 'microdot':
-            commands.extend([
-                f"{venv_pip} install microdot",
-                f"{venv_pip} install jinja2"
-            ])
+            commands.append(f"{global_venv_pip} install -U microdot jinja2")
         elif framework == 'fastapi':
-            commands.extend([
-                f"{venv_pip} install fastapi uvicorn",
-                f"{venv_pip} install jinja2"
-            ])
+            commands.append(f"{global_venv_pip} install -U fastapi uvicorn jinja2")
         
         # Ejecutar comandos
         for cmd in commands:
@@ -1006,13 +1097,14 @@ elif FRAMEWORK == "fastapi":
         
         return json.dumps({
             'success': True,
-            'message': f'Entorno virtual creado para {app_name}',
+            'message': f'App creada para {app_name} (usando entorno global)',
             'app_path': app_path,
             'framework': framework,
+            'global_venv': global_venv_dir,
             'next_steps': [
                 f'Crea tu app en {app_path}/app.py',
-                'Activa el entorno: source venv/bin/activate',
-                'Inicia el servidor: python app.py'
+                f'Python: {global_venv_python}',
+                f'Inicia el servidor: cd {app_path} && {global_venv_python} app.py'
             ]
         })
         
@@ -1026,9 +1118,9 @@ elif FRAMEWORK == "fastapi":
 def list_web_apps():
     """Listar apps web instaladas"""
     try:
-        # Listar directorios en /home/phablet/webapps
+        # Listar directorios en /home/phablet/Apps
         result = subprocess.run(
-            ['adb', 'shell', 'ls -la /home/phablet/webapps/ 2>/dev/null || echo "No apps found"'],
+            ['adb', 'shell', 'ls -la /home/phablet/Apps/ 2>/dev/null || echo "No apps found"'],
             capture_output=True, text=True, timeout=10
         )
         
@@ -1045,15 +1137,15 @@ def list_web_apps():
             if line.startswith('d') and '.' not in line.split()[-1]:  # Directorios que no empiezan con .
                 app_name = line.split()[-1]
                 
-                # Verificar si tiene entorno virtual
+                # Global venv is shared (no per-app venv)
                 venv_check = subprocess.run(
-                    ['adb', 'shell', f'test -d /home/phablet/webapps/{app_name}/venv && echo "yes" || echo "no"'],
+                    ['adb', 'shell', 'test -x /home/phablet/.ubtool/venv/bin/python && echo "yes" || echo "no"'],
                     capture_output=True, text=True, timeout=5
                 )
                 
                 # Leer configuración si existe
                 config_check = subprocess.run(
-                    ['adb', 'shell', f'test -f /home/phablet/webapps/{app_name}/config.py && cat /home/phablet/webapps/{app_name}/config.py || echo ""'],
+                    ['adb', 'shell', f'test -f /home/phablet/Apps/{app_name}/config.py && cat /home/phablet/Apps/{app_name}/config.py || echo ""'],
                     capture_output=True, text=True, timeout=5
                 )
                 
@@ -1068,7 +1160,8 @@ def list_web_apps():
                     'name': app_name,
                     'has_venv': venv_check.stdout.strip() == 'yes',
                     'config': config,
-                    'path': f'/home/phablet/webapps/{app_name}'
+                    'path': f'/home/phablet/Apps/{app_name}',
+                    'global_venv': '/home/phablet/.ubtool/venv'
                 })
         
         return json.dumps({
@@ -1096,7 +1189,7 @@ def start_web_app():
             })
         
         # Verificar si la app existe
-        check_cmd = f"test -d /home/phablet/webapps/{app_name}"
+        check_cmd = f"test -d /home/phablet/Apps/{app_name}"
         check_result = subprocess.run(['adb', 'shell', check_cmd], timeout=5)
         
         if check_result.returncode != 0:
@@ -1105,8 +1198,8 @@ def start_web_app():
                 'error': f'App {app_name} no encontrada'
             })
         
-        # Iniciar app
-        start_cmd = f"cd /home/phablet/webapps/{app_name} && source venv/bin/activate && nohup python app.py > app.log 2>&1 &"
+        # Iniciar app usando venv global
+        start_cmd = f"cd /home/phablet/Apps/{app_name} && nohup /home/phablet/.ubtool/venv/bin/python app.py > app.log 2>&1 &"
         result = subprocess.run(['adb', 'shell', start_cmd], timeout=10)
         
         if result.returncode == 0:
@@ -1142,7 +1235,7 @@ def stop_web_app():
             })
         
         # Detener app (matar proceso python)
-        stop_cmd = f"pkill -f 'python.*{app_name}'"
+        stop_cmd = f"pkill -f '/home/phablet/Apps/{app_name}.*app.py' || pkill -f 'app.py.*{app_name}'"
         result = subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
         
         return json.dumps({

@@ -445,10 +445,18 @@
     <!-- Footer -->
     <footer>
         <div class="w3-content">
-            <p>&copy; 2024 UBTool - Ubuntu Touch Connection Tool</p>
+            <p>&copy; <span id="footer-year"></span> UBTool - Ubuntu Touch Connection Tool</p>
             <p class="mt-2" style="opacity: 0.8; font-size: 0.9rem;">
                 <span data-i18n="footer.made_with">Desarrollado con ❤️ para la comunidad Ubuntu Touch</span>
             </p>
+            <div class="mt-2">
+                <a href="https://buymeacoffee.com/lukasgaleano" target="_blank" rel="noopener" title="Buy Me a Coffee" style="display:inline-block;">
+                    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 42px; width: auto; border-radius: 8px;" />
+                </a>
+                <div style="margin-top: 0.5rem; opacity: 0.85; font-size: 0.9rem;">
+                    <span data-i18n="footer.support">Apoya el proyecto</span>
+                </div>
+            </div>
         </div>
     </footer>
 
@@ -467,7 +475,7 @@
                 'tools.shell': '🖥️ Shell',
                 'tools.reboot': '🔄 Reiniciar',
                 'webapps.title': 'Apps Web',
-                'webapps.prepare': 'Preparar entorno (pip/virtualenv)',
+                'webapps.prepare': 'Preparar entorno global (pip/virtualenv)',
                 'webapps.name': 'Nombre:',
                 'webapps.name_ph': 'mi_app',
                 'webapps.framework': 'Framework:',
@@ -488,7 +496,8 @@
                 'features.details.desc': 'Obtén información completa del dispositivo: batería, almacenamiento, red y más',
                 'features.auto.title': 'Autoinstalable',
                 'features.auto.desc': 'Instalación automática en Linux y Windows con configuración del entorno',
-                'footer.made_with': 'Desarrollado con ❤️ para la comunidad Ubuntu Touch'
+                'footer.made_with': 'Desarrollado con ❤️ para la comunidad Ubuntu Touch',
+                'footer.support': 'Apoya el proyecto'
             },
             en: {
                 'header.subtitle': 'Ubuntu Touch Connection Tool',
@@ -503,7 +512,7 @@
                 'tools.shell': '🖥️ Shell',
                 'tools.reboot': '🔄 Reboot',
                 'webapps.title': 'Web Apps',
-                'webapps.prepare': 'Prepare environment (pip/virtualenv)',
+                'webapps.prepare': 'Prepare global environment (pip/virtualenv)',
                 'webapps.name': 'Name:',
                 'webapps.name_ph': 'my_app',
                 'webapps.framework': 'Framework:',
@@ -524,7 +533,8 @@
                 'features.details.desc': 'Get full device info: battery, storage, network and more',
                 'features.auto.title': 'Auto-install',
                 'features.auto.desc': 'Automatic installation on Linux and Windows with environment setup',
-                'footer.made_with': 'Made with ❤️ for the Ubuntu Touch community'
+                'footer.made_with': 'Made with ❤️ for the Ubuntu Touch community',
+                'footer.support': 'Support the project'
             }
         };
 
@@ -641,6 +651,8 @@
                     const pip = d.pip && d.pip.version ? d.pip.version : 'OK';
                     const venv = d.virtualenv && d.virtualenv.available ? 'OK' : 'N/A';
                     status.innerHTML = `<div style="text-align:left;">✅ Entorno listo<br><strong>Python:</strong> ${py}<br><strong>pip:</strong> ${pip}<br><strong>virtualenv:</strong> ${venv}</div>`;
+                    // Actualizar estado del venv después de preparar
+                    setTimeout(checkVenvStatus, 1000);
                 } else {
                     status.innerHTML = `❌ ${data.error || 'Error al preparar entorno'}`;
                 }
@@ -1220,13 +1232,40 @@
             }
         }
         
+        // Verificar estado del entorno virtual global
+        async function checkVenvStatus() {
+            try {
+                const response = await fetch('/api/devtools/venv_status');
+                const data = await response.json();
+                const statusEl = document.getElementById('dev-env-status');
+                
+                if (data.success) {
+                    if (data.status === 'ready') {
+                        statusEl.innerHTML = '<span style="color: #4CAF50;">✓ ' + data.message + '</span>';
+                    } else if (data.status === 'incomplete') {
+                        statusEl.innerHTML = '<span style="color: #FF9800;">⚠ ' + data.message + '</span>';
+                    } else {
+                        statusEl.innerHTML = '<span style="color: #2196F3;">→ ' + data.message + '</span>';
+                    }
+                } else {
+                    statusEl.innerHTML = '<span style="color: #f44336;">✗ Error: ' + data.error + '</span>';
+                }
+            } catch (error) {
+                const statusEl = document.getElementById('dev-env-status');
+                statusEl.innerHTML = '<span style="color: #f44336;">✗ Error al verificar estado</span>';
+            }
+        }
+        
         // Verificar conexión al cargar la página
         window.onload = function() {
             const lang = getCurrentLanguage();
             applyTranslations(lang);
             const btn = document.getElementById('lang-toggle');
             if (btn) btn.addEventListener('click', toggleLanguage);
+            const yearEl = document.getElementById('footer-year');
+            if (yearEl) yearEl.textContent = String(new Date().getFullYear());
             checkDevice();
+            checkVenvStatus();
         };
         
         // Auto-refresh device status every 30 seconds
