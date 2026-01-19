@@ -945,7 +945,54 @@
     }
 
     // Initialize on page load
-    window.onload = function() {
+    window.onload = async function() {
+        // Initialize language
+        initializeLanguage();
+        
+        // Check device connection
+        checkDevice();
+        
+        // Check for updates
+        checkForUpdatesBackground();
+        
+        // Initialize sidebar
+        initializeSidebar();
+    };
+
+    // Background version check
+    async function checkForUpdatesBackground() {
+        try {
+            const response = await fetch('/api/version/check');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update current version display
+                const currentVersionElements = document.querySelectorAll('#current-version, #current-version-footer');
+                currentVersionElements.forEach(el => {
+                    el.textContent = data.current_version;
+                });
+                
+                // Show update notification if available
+                if (data.has_update) {
+                    const notification = document.getElementById('update-notification');
+                    const latestVersionElement = document.getElementById('latest-version');
+                    
+                    if (notification && latestVersionElement) {
+                        latestVersionElement.textContent = data.latest_version;
+                        notification.style.display = 'block';
+                        
+                        console.log(`Nueva versión disponible: ${data.latest_version} (actual: ${data.current_version})`);
+                    }
+                }
+            } else {
+                console.warn('No se pudo verificar la versión:', data.error);
+            }
+        } catch (error) {
+            console.error('Error verificando actualizaciones:', error);
+        }
+    }
+
+    function initializeLanguage() {
         const lang = getCurrentLanguage();
         applyTranslations(lang);
         
@@ -953,7 +1000,9 @@
         if (langToggle) {
             langToggle.addEventListener('click', toggleLanguage);
         }
-        
+    }
+
+    function initializeSidebar() {
         const yearEl = document.getElementById('footer-year');
         if (yearEl) {
             yearEl.textContent = String(new Date().getFullYear());

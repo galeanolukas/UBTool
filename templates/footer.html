@@ -1,34 +1,53 @@
 <footer class="w3-container w3-dark-grey" style="background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%); padding: 2rem 0; margin-top: 3rem;">
     <div class="w3-content">
         <div class="w3-row">
-            <div class="w3-col s12 m6" style="text-align: center;">
-                <h4 style="color: var(--ub-orange); margin-bottom: 1rem;" data-i18n="footer.about">Acerca de UBTool</h4>
-                <p style="line-height: 1.6;" data-i18n="footer.description">
-                    Herramienta moderna para gestionar dispositivos Ubuntu Touch vía ADB con interfaz web intuitiva.
+            <div class="w3-col s12 m4 l4" style="text-align: center;">
+                <h5 style="color: var(--ub-orange); margin-bottom: 1rem;">🚀 UBTool</h5>
+                <p style="font-size: 0.9rem; opacity: 0.8;">
+                    Herramienta completa para gestionar dispositivos Ubuntu Touch vía ADB
+                </p>
+                <div style="margin-top: 1rem;">
+                    <span id="current-version" style="font-size: 0.8rem; opacity: 0.7;">v1.4.0</span>
+                </div>
+            </div>
+            <div class="w3-col s12 m4 l4" style="text-align: center;">
+                <h5 style="color: var(--ub-orange); margin-bottom: 1rem;">📚 Recursos</h5>
+                <p style="font-size: 0.9rem; opacity: 0.8;">
+                    <a href="https://github.com/lukasgaleano/UBTool" target="_blank" style="color: var(--ub-light);">GitHub</a> | 
+                    <a href="https://github.com/lukasgaleano/UBTool/issues" target="_blank" style="color: var(--ub-light);">Issues</a>
                 </p>
             </div>
-            
-            <div class="w3-col s12 m6" style="text-align: center;">
-                <h4 style="color: var(--ub-orange); margin-bottom: 1rem;" data-i18n="footer.support">Apoya el proyecto</h4>
-                <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
-                    <a href="https://buymeacoffee.com/lukasgaleano" target="_blank" 
-                       style="color: var(--ub-light); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid var(--ub-orange); border-radius: 8px; transition: all 0.3s ease;"
-                       onmouseover="this.style.background='var(--ub-orange)'" 
-                       onmouseout="this.style.background='transparent'">
-                        <span>☕</span>
-                        <span data-i18n="footer.buy_coffee">Buy Me a Coffee</span>
-                    </a>
+            <div class="w3-col s12 m4 l4" style="text-align: center;">
+                <h5 style="color: var(--ub-orange); margin-bottom: 1rem;">☕ Apoyo</h5>
+                <p style="font-size: 0.9rem; opacity: 0.8;">
+                    Si te gusta este proyecto, considera apoyarlo:
+                    <a href="https://buymeacoffee.com/lukasgaleano" target="_blank" style="color: var(--ub-orange); font-weight: bold;">Buy Me a Coffee</a>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Update Notification -->
+        <div id="update-notification" style="display: none; margin-top: 2rem; padding: 1rem; background: rgba(233,84,32,0.1); border: 1px solid var(--ub-orange); border-radius: 8px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+                <span style="font-size: 1.2rem;">🔄</span>
+                <div>
+                    <p style="margin: 0; color: var(--ub-orange); font-weight: bold;">
+                        Nueva versión disponible: <span id="latest-version">v1.4.1</span>
+                    </p>
+                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
+                        Tu versión: <span id="current-version-footer">v1.4.0</span>
+                    </p>
+                    <button onclick="checkForUpdates()" style="margin-top: 0.5rem; background: var(--ub-orange); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                        Actualizar Ahora
+                    </button>
                 </div>
             </div>
         </div>
         
-        <div class="w3-row" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #444;">
-            <div class="w3-col s12" style="text-align: center;">
-                <p style="opacity: 0.8; font-size: 0.9rem;">
-                    © <span id="footer-year">2024</span> UBTool. 
-                    <span data-i18n="footer.rights">Todos los derechos reservados.</span>
-                </p>
-            </div>
+        <div style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="font-size: 0.8rem; opacity: 0.6;">
+                &copy; 2026 UBTool - Desarrollado con &hearts; para Ubuntu Touch
+            </p>
         </div>
     </div>
 </footer>

@@ -1823,6 +1823,50 @@ async def device_info(request):
             'error': 'No se pudo obtener información del dispositivo'
         }
 
+@app.route('/api/version/check')
+async def check_version(request):
+    """API: Verificar si hay actualizaciones disponibles"""
+    try:
+        import re
+        import requests
+        
+        # Get current version
+        current_version = "v1.4.0"
+        try:
+            with open('version.txt', 'r') as f:
+                current_version = f.read().strip()
+        except:
+            pass
+        
+        # Get latest version from GitHub
+        response = requests.get('https://api.github.com/repos/lukasgaleano/UBTool/releases/latest', timeout=5)
+        if response.status_code == 200:
+            latest_version = response.json().get('tag_name', 'v1.4.0')
+            
+            # Compare versions (simple string comparison for now)
+            has_update = latest_version != current_version
+            
+            return {
+                'success': True,
+                'current_version': current_version,
+                'latest_version': latest_version,
+                'has_update': has_update,
+                'download_url': f"https://github.com/lukasgaleano/UBTool/releases/tag/{latest_version}"
+            }
+        else:
+            return {
+                'success': False,
+                'error': 'No se pudo verificar la versión',
+                'current_version': current_version
+            }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'current_version': current_version
+        }
+
 @app.route('/api/device/shell', methods=['POST'])
 async def shell_command(request):
     """API: Ejecutar comando shell"""
