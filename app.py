@@ -987,7 +987,7 @@ def prepare_dev_environment(request):
         })
 
 @app.route('/api/devtools/check', methods=['GET'])
-def check_dev_tools():
+def check_dev_tools(request):
     """Verificar disponibilidad de herramientas de desarrollo en el dispositivo"""
     try:
         # Verificar Python
@@ -1826,12 +1826,14 @@ async def device_info(request):
 @app.route('/api/version/check')
 async def check_version(request):
     """API: Verificar si hay actualizaciones disponibles"""
+    # Initialize with default version to ensure it's always available
+    current_version = "v1.4.0"
+    
     try:
         import re
         import requests
         
-        # Get current version
-        current_version = "v1.4.0"
+        # Get current version from file
         try:
             with open('version.txt', 'r') as f:
                 current_version = f.read().strip()

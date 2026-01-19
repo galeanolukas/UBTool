@@ -123,6 +123,24 @@
             'webapps.installed.delete': '🗑️ Eliminar',
             'webapps.installed.prepare': '🚀 Preparar',
             'webapps.installed.no_apps': 'No hay apps instaladas',
+            'webapps.create.title': 'Crear Nueva WebApp',
+            'webapps.create.name': 'Nombre de la App:',
+            'webapps.create.name_ph': 'mi_app',
+            'webapps.create.name_hint': 'Ej: mi_app, blog-todo, api_rest',
+            'webapps.create.framework': 'Framework/Servidor:',
+            'webapps.create.framework_ph': 'Selecciona un framework...',
+            'webapps.create.framework_hint': 'Microdot es optimizado para Ubuntu Touch',
+            'webapps.create.port': 'Puerto (opcional):',
+            'webapps.create.port_ph': '8081',
+            'webapps.create.port_hint': 'Si no especificas, se usará un puerto disponible automáticamente',
+            'webapps.create.venv': 'Crear entorno virtual (recomendado)',
+            'webapps.create.venv_hint': 'Aísla las dependencias de tu aplicación',
+            'webapps.create.submit': '🚀 Crear WebApp',
+            'webapps.create.creating': '⏳ Creando...',
+            'webapps.create.success': '✅ Creado Exitosamente',
+            'webapps.create.cancel': 'Cancelar',
+            'webapps.create.status_creating': '🔄 Creando aplicación web...',
+            'webapps.create.error_required': '❌ Por favor completa todos los campos requeridos',
             'files.title': '📁 File Manager',
             'files.subtitle': 'Explora archivos del dispositivo',
             'files.open': 'Abrir',
@@ -164,6 +182,24 @@
             'webapps.installed.delete': '🗑️ Delete',
             'webapps.installed.prepare': '🚀 Prepare',
             'webapps.installed.no_apps': 'No installed apps',
+            'webapps.create.title': 'Create New WebApp',
+            'webapps.create.name': 'App Name:',
+            'webapps.create.name_ph': 'my_app',
+            'webapps.create.name_hint': 'e.g.: my_app, blog-todo, api_rest',
+            'webapps.create.framework': 'Framework/Server:',
+            'webapps.create.framework_ph': 'Select a framework...',
+            'webapps.create.framework_hint': 'Microdot is optimized for Ubuntu Touch',
+            'webapps.create.port': 'Port (optional):',
+            'webapps.create.port_ph': '8081',
+            'webapps.create.port_hint': 'If not specified, an available port will be used automatically',
+            'webapps.create.venv': 'Create virtual environment (recommended)',
+            'webapps.create.venv_hint': 'Isolates your app dependencies',
+            'webapps.create.submit': '🚀 Create WebApp',
+            'webapps.create.creating': '⏳ Creating...',
+            'webapps.create.success': '✅ Successfully Created',
+            'webapps.create.cancel': 'Cancel',
+            'webapps.create.status_creating': '🔄 Creating web application...',
+            'webapps.create.error_required': '❌ Please complete all required fields',
             'files.title': '📁 File Manager',
             'files.subtitle': 'Browse device files',
             'files.open': 'Open',
@@ -174,11 +210,19 @@
             'features.devices.desc': 'View and control multiple connected devices simultaneously',
             'features.web.title': 'Web Interface',
             'features.web.desc': 'Access from any modern browser with responsive design and Ubuntu Touch styling',
-            'footer.about': 'About UBTool',
-            'footer.description': 'Modern tool for managing Ubuntu Touch devices via ADB with intuitive web interface.',
-            'footer.support': 'Support the project',
-            'footer.buy_coffee': 'Buy Me a Coffee',
-            'footer.rights': 'All rights reserved.'
+            'features.terminal.title': 'Integrated Terminal',
+            'features.terminal.desc': 'Execute ADB commands directly from the web interface',
+            'footer.description': 'Complete tool for managing Ubuntu Touch devices via ADB',
+            'footer.resources.title': '📚 Resources',
+            'footer.resources.github': 'GitHub',
+            'footer.resources.issues': 'Issues',
+            'footer.support.title': '☕ Support',
+            'footer.support.description': 'If you like this project, consider supporting it:',
+            'footer.support.link': 'Buy Me a Coffee',
+            'footer.update.available': 'New version available: ',
+            'footer.update.current': 'Your version: ',
+            'footer.update.button': 'Update Now',
+            'footer.copyright': '© 2026 UBTool - Developed with ❤️ for Ubuntu Touch'
         }
     };
 
@@ -863,6 +907,368 @@
         }
     }
 
+    // Development Environment Functions
+    function prepareDevEnv() {
+        // Create modal for environment preparation
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">⚙️ Preparar Entorno de Desarrollo</h3>
+                    <button onclick="this.closest('div[style*=position]').remove()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                
+                <div id="dev-env-status" style="margin-bottom: 1.5rem;">
+                    <p style="color: var(--ub-light); opacity: 0.8;">Verificando herramientas de desarrollo...</p>
+                </div>
+                
+                <div id="dev-env-details" style="display: none;">
+                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">Estado de Herramientas:</h4>
+                    <div id="tools-status" style="margin-bottom: 1.5rem;"></div>
+                    
+                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">Acciones Realizadas:</h4>
+                    <div id="actions-log" style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; max-height: 200px; overflow-y: auto;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button id="prepare-btn" onclick="startDevEnvPreparation()" style="background: var(--ub-orange); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        🚀 Preparar Entorno
+                    </button>
+                    <button onclick="this.closest('div[style*=position]').remove()" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Check current status on load
+        checkDevToolsStatus();
+        
+        // Close sidebar
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
+    async function checkDevToolsStatus() {
+        try {
+            const response = await fetch('/api/devtools/check');
+            const data = await response.json();
+            
+            if (data.success) {
+                const statusDiv = document.getElementById('dev-env-status');
+                const detailsDiv = document.getElementById('dev-env-details');
+                const toolsDiv = document.getElementById('tools-status');
+                
+                statusDiv.innerHTML = `<p style="color: #4CAF50;">✅ Herramientas verificadas</p>`;
+                detailsDiv.style.display = 'block';
+                
+                toolsDiv.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div style="background: ${data.tools.python.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.python.available ? '#4CAF50' : '#f44336'};">
+                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.python.available ? '#4CAF50' : '#f44336'};">🐍 Python3</h5>
+                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
+                                ${data.tools.python.available ? `✅ ${data.tools.python.version}` : '❌ No disponible'}
+                            </p>
+                        </div>
+                        <div style="background: ${data.tools.pip.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.pip.available ? '#4CAF50' : '#f44336'};">
+                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.pip.available ? '#4CAF50' : '#f44336'};">📦 Pip</h5>
+                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
+                                ${data.tools.pip.available ? `✅ ${data.tools.pip.version}` : '❌ No disponible'}
+                            </p>
+                        </div>
+                        <div style="background: ${data.tools.virtualenv.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.virtualenv.available ? '#4CAF50' : '#f44336'};">
+                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.virtualenv.available ? '#4CAF50' : '#f44336'};">🌍 Virtualenv</h5>
+                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
+                                ${data.tools.virtualenv.available ? `✅ ${data.tools.virtualenv.version || 'Disponible'}` : '❌ No disponible'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            document.getElementById('dev-env-status').innerHTML = `<p style="color: #f44336;">❌ Error verificando herramientas: ${error.message}</p>`;
+        }
+    }
+
+    async function startDevEnvPreparation() {
+        const prepareBtn = document.getElementById('prepare-btn');
+        const statusDiv = document.getElementById('dev-env-status');
+        const actionsLog = document.getElementById('actions-log');
+        
+        prepareBtn.disabled = true;
+        prepareBtn.textContent = '⏳ Preparando...';
+        statusDiv.innerHTML = '<p style="color: var(--ub-orange);">🔄 Preparando entorno de desarrollo...</p>';
+        actionsLog.innerHTML = '';
+        
+        try {
+            const response = await fetch('/api/devtools/prepare_env', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                statusDiv.innerHTML = `<p style="color: #4CAF50;">✅ ${data.message}</p>`;
+                
+                // Show actions log
+                if (data.details && data.details.actions) {
+                    actionsLog.innerHTML = data.details.actions.map(action => `
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                            <strong>${action.step}:</strong> 
+                            <span style="color: ${action.return_code === 0 ? '#4CAF50' : '#f44336'};">
+                                ${action.return_code === 0 ? '✅' : '❌'}
+                            </span>
+                            ${action.stdout ? `<br><small>${action.stdout}</small>` : ''}
+                            ${action.stderr ? `<br><small style="color: #f44336;">${action.stderr}</small>` : ''}
+                        </div>
+                    `).join('');
+                }
+                
+                prepareBtn.textContent = '✅ Entorno Listo';
+                prepareBtn.style.background = '#4CAF50';
+                
+                // Auto-refresh tools status after 2 seconds
+                setTimeout(checkDevToolsStatus, 2000);
+            } else {
+                statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${data.error}</p>`;
+                prepareBtn.textContent = '🔄 Reintentar';
+                prepareBtn.disabled = false;
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${error.message}</p>`;
+            prepareBtn.textContent = '🔄 Reintentar';
+            prepareBtn.disabled = false;
+        }
+    }
+
+    // Installed Apps Management
+    function loadInstalledApps() {
+        // Create modal for installed apps
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">📋 Apps Instaladas</h3>
+                    <button onclick="this.closest('div[style*=position]').remove()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                
+                <div id="apps-status" style="margin-bottom: 1.5rem;">
+                    <p style="color: var(--ub-light); opacity: 0.8;">🔄 Cargando aplicaciones instaladas...</p>
+                </div>
+                
+                <div id="apps-list" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <button onclick="refreshAppsList()" style="background: var(--ub-orange); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
+                            🔄 Actualizar Lista
+                        </button>
+                        <div style="color: var(--ub-light); opacity: 0.8;">
+                            <span id="apps-count">0</span> aplicaciones encontradas
+                        </div>
+                    </div>
+                    
+                    <div id="apps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                        <!-- Apps will be loaded here -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
+                    <button onclick="this.closest('div[style*=position]').remove()" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Load apps list
+        refreshAppsList();
+        
+        // Close sidebar
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
+    async function refreshAppsList() {
+        const statusDiv = document.getElementById('apps-status');
+        const appsList = document.getElementById('apps-list');
+        const appsGrid = document.getElementById('apps-grid');
+        const appsCount = document.getElementById('apps-count');
+        
+        try {
+            const response = await fetch('/api/devtools/list_apps');
+            const data = await response.json();
+            
+            if (data.success) {
+                statusDiv.style.display = 'none';
+                appsList.style.display = 'block';
+                
+                appsCount.textContent = data.apps.length;
+                
+                if (data.apps.length === 0) {
+                    appsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; opacity: 0.6;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+                            <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">No hay aplicaciones instaladas</h4>
+                            <p>Crea tu primera WebApp usando el botón "Crear WebApp" en el sidebar.</p>
+                        </div>
+                    `;
+                } else {
+                    appsGrid.innerHTML = data.apps.map(app => `
+                        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="color: var(--ub-orange); margin: 0; font-size: 1.2rem;">🚀 ${app.name}</h4>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    ${app.has_venv ? '<span style="color: #4CAF50; font-size: 0.8rem;">✅ Venv</span>' : '<span style="color: #f44336; font-size: 0.8rem;">❌ Venv</span>'}
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem;">
+                                <p style="margin: 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
+                                    <strong>Ruta:</strong> ${app.path}
+                                </p>
+                                ${app.config.framework ? `
+                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
+                                        <strong>Framework:</strong> ${app.config.framework}
+                                    </p>
+                                ` : ''}
+                                ${app.config.port ? `
+                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
+                                        <strong>Puerto:</strong> ${app.config.port}
+                                    </p>
+                                ` : ''}
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button onclick="startApp('${app.name}')" style="background: #4CAF50; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                    ▶️ Iniciar
+                                </button>
+                                <button onclick="stopApp('${app.name}')" style="background: #f44336; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                    ⏹️ Detener
+                                </button>
+                                <button onclick="openApp('${app.name}')" style="background: var(--ub-orange); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                    🌐 Abrir
+                                </button>
+                                <button onclick="deleteApp('${app.name}')" style="background: rgba(244,67,54,0.2); color: #f44336; border: 1px solid #f44336; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                    🗑️ Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } else {
+                statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error cargando aplicaciones: ${data.error}</p>`;
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error de conexión: ${error.message}</p>`;
+        }
+    }
+
+    async function startApp(appName) {
+        try {
+            const response = await fetch('/api/devtools/start_app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_name: appName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ ${data.message}\n🌐 URL: ${data.access_url}`);
+                refreshAppsList(); // Refresh to update status
+            } else {
+                alert(`❌ Error: ${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Error de conexión: ${error.message}`);
+        }
+    }
+
+    async function stopApp(appName) {
+        try {
+            const response = await fetch('/api/devtools/stop_app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_name: appName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                refreshAppsList(); // Refresh to update status
+            } else {
+                alert(`❌ Error: ${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Error de conexión: ${error.message}`);
+        }
+    }
+
+    function openApp(appName) {
+        // Open app in new tab with dynamic port
+        window.open(`http://localhost:8081`, '_blank');
+    }
+
+    async function deleteApp(appName) {
+        if (!confirm(`⚠️ ¿Estás seguro de que quieres eliminar la aplicación "${appName}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/devtools/delete_app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_name: appName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                refreshAppsList(); // Refresh to update list
+            } else {
+                alert(`❌ Error: ${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Error de conexión: ${error.message}`);
+        }
+    }
+
     // Sidebar Functions
     let sidebarTimeout;
     let isSidebarOpen = false;
@@ -941,6 +1347,242 @@
         // Close sidebar after action
         if (isSidebarOpen) {
             toggleSidebar();
+        }
+    }
+
+    // Web App Creation Modal
+    function createWebAppModal() {
+        // Check if modal already exists
+        const existingModal = document.getElementById('webapp-create-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modal = document.createElement('div');
+        modal.id = 'webapp-create-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;" data-i18n="webapps.create.title">🚀 Crear Nueva WebApp</h3>
+                    <button onclick="closeWebAppModal()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                
+                <form id="webapp-form" onsubmit="createWebApp(event)">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;" data-i18n="webapps.create.name">
+                            Nombre de la App:
+                        </label>
+                        <input 
+                            type="text" 
+                            id="webapp-name" 
+                            data-i18n-placeholder="webapps.create.name_ph"
+                            placeholder="mi_app" 
+                            required
+                            pattern="[a-zA-Z][a-zA-Z0-9_-]*"
+                            title="Debe comenzar con una letra y solo puede contener letras, números, guiones y guiones bajos"
+                            style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
+                        />
+                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; display: block;" data-i18n="webapps.create.name_hint">
+                            Ej: mi_app, blog-todo, api_rest
+                        </small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;" data-i18n="webapps.create.framework">
+                            Framework/Servidor:
+                        </label>
+                        <select 
+                            id="webapp-framework" 
+                            required
+                            style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
+                        >
+                            <option value="" data-i18n="webapps.create.framework_ph">Selecciona un framework...</option>
+                            <optgroup label="Frameworks Ligeros (Recomendado)">
+                                <option value="microdot">🚀 Microdot (Recomendado para UT)</option>
+                                <option value="flask">🌶️ Flask</option>
+                                <option value="fastapi">⚡ FastAPI</option>
+                            </optgroup>
+                            <optgroup label="Frameworks Completos">
+                                <option value="django">🎸 Django</option>
+                                <option value="bottle">🍾 Bottle</option>
+                            </optgroup>
+                            <optgroup label="Servidores Estáticos">
+                                <option value="http-server">📁 Servidor HTTP Estático</option>
+                                <option value="nodejs">🟢 Node.js Express</option>
+                                <option value="react">⚛️ React</option>
+                                <option value="vue">💚 Vue.js</option>
+                            </optgroup>
+                        </select>
+                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; display: block;" data-i18n="webapps.create.framework_hint">
+                            Microdot es optimizado para Ubuntu Touch
+                        </small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;" data-i18n="webapps.create.port">
+                            Puerto (opcional):
+                        </label>
+                        <input 
+                            type="number" 
+                            id="webapp-port" 
+                            data-i18n-placeholder="webapps.create.port_ph"
+                            placeholder="8081" 
+                            min="1024" 
+                            max="65535"
+                            style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
+                        />
+                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; display: block;" data-i18n="webapps.create.port_hint">
+                            Si no especificas, se usará un puerto disponible automáticamente
+                        </small>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input 
+                                type="checkbox" 
+                                id="webapp-venv" 
+                                checked
+                                style="width: auto; margin: 0;"
+                            />
+                            <span style="color: var(--ub-light);" data-i18n="webapps.create.venv">Crear entorno virtual (recomendado)</span>
+                        </label>
+                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; margin-left: 1.5rem; display: block;" data-i18n="webapps.create.venv_hint">
+                            Aísla las dependencias de tu aplicación
+                        </small>
+                    </div>
+                    
+                    <div id="webapp-create-status" style="margin-bottom: 1rem; min-height: 1.5rem;"></div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <button 
+                            type="submit" 
+                            id="create-webapp-btn"
+                            data-i18n="webapps.create.submit"
+                            style="flex: 1; background: var(--ub-orange); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s ease;"
+                        >
+                            🚀 Crear WebApp
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="closeWebAppModal()"
+                            data-i18n="webapps.create.cancel"
+                            style="flex: 1; background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; transition: all 0.3s ease;"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        
+        // Apply translations to modal elements
+        applyTranslations(currentLanguage);
+        
+        // Focus on name input
+        setTimeout(() => {
+            document.getElementById('webapp-name').focus();
+        }, 100);
+
+        // Close sidebar
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
+    function closeWebAppModal() {
+        const modal = document.getElementById('webapp-create-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    async function createWebApp(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('webapp-name').value.trim();
+        const framework = document.getElementById('webapp-framework').value;
+        const port = document.getElementById('webapp-port').value.trim();
+        const useVenv = document.getElementById('webapp-venv').checked;
+        const statusDiv = document.getElementById('webapp-create-status');
+        const submitBtn = document.getElementById('create-webapp-btn');
+        
+        if (!name || !framework) {
+            statusDiv.innerHTML = `<p style="color: #f44336;">${UBTOOL_I18N[currentLanguage]['webapps.create.error_required'] || '❌ Por favor completa todos los campos requeridos'}</p>`;
+            return;
+        }
+        
+        // Disable button and show loading
+        submitBtn.disabled = true;
+        submitBtn.textContent = UBTOOL_I18N[currentLanguage]['webapps.create.creating'] || '⏳ Creando...';
+        statusDiv.innerHTML = `<p style="color: var(--ub-orange);">${UBTOOL_I18N[currentLanguage]['webapps.create.status_creating'] || '🔄 Creando aplicación web...'}</p>`;
+        
+        try {
+            const response = await fetch('/api/devtools/create_app', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    app_name: name,
+                    framework: framework,
+                    port: port || null,
+                    use_venv: useVenv
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                statusDiv.innerHTML = `
+                    <div style="background: rgba(76,175,80,0.1); border: 1px solid #4CAF50; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+                        <h4 style="color: #4CAF50; margin: 0 0 0.5rem 0;">✅ ${data.message}</h4>
+                        <p style="margin: 0; color: var(--ub-light); font-size: 0.9rem;">
+                            <strong>Ruta:</strong> ${data.app_path || 'N/A'}<br>
+                            ${data.access_url ? `<strong>URL:</strong> <a href="${data.access_url}" target="_blank" style="color: var(--ub-orange);">${data.access_url}</a><br>` : ''}
+                            ${data.next_steps ? `<strong>Siguientes pasos:</strong> ${data.next_steps}` : ''}
+                        </p>
+                    </div>
+                `;
+                
+                // Reset form
+                document.getElementById('webapp-form').reset();
+                submitBtn.textContent = UBTOOL_I18N[currentLanguage]['webapps.create.success'] || '✅ Creado Exitosamente';
+                submitBtn.style.background = '#4CAF50';
+                
+                // Auto-close modal after 3 seconds
+                setTimeout(() => {
+                    closeWebAppModal();
+                    // Refresh installed apps list if it's open
+                    const appsModal = document.getElementById('apps-list');
+                    if (appsModal) {
+                        refreshAppsList();
+                    }
+                }, 3000);
+                
+            } else {
+                statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${data.error}</p>`;
+                submitBtn.disabled = false;
+                submitBtn.textContent = UBTOOL_I18N[currentLanguage]['webapps.create.submit'] || '🚀 Crear WebApp';
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error de conexión: ${error.message}</p>`;
+            submitBtn.disabled = false;
+            submitBtn.textContent = UBTOOL_I18N[currentLanguage]['webapps.create.submit'] || '🚀 Crear WebApp';
         }
     }
 
