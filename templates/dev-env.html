@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Preparar Entorno - UBTool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dev-env-section {
+        background: rgba(49, 45, 42, 0.8);
+        border: 1px solid var(--ub-orange);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .dev-env-section:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .status-ready {
+        background: #4CAF50;
+        box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+        animation: pulse-green 2s infinite;
+    }
+    
+    .status-preparing {
+        background: #FF9800;
+        box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
+        animation: pulse-orange 2s infinite;
+    }
+    
+    .status-error {
+        background: #f44336;
+        box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
+        animation: pulse-red 2s infinite;
+    }
+    
+    @keyframes pulse-green {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    @keyframes pulse-orange {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    @keyframes pulse-red {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .package-list {
+        max-height: 400px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.3);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .package-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        background: rgba(255,255,255,0.05);
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .package-item:hover {
+        background: rgba(255,255,255,0.1);
+        transform: translateX(4px);
+    }
+    
+    .package-name {
+        font-family: 'Courier New', monospace;
+        color: var(--ub-light);
+        font-weight: 500;
+    }
+    
+    .package-version {
+        background: var(--ub-orange);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w3-container" style="padding: 2rem 0;">
+    <div class="w3-row-padding">
+        <div class="w3-col l12">
+            <!-- Header -->
+            <div class="w3-card w3-round-large" style="background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%); overflow: hidden;">
+                <div class="w3-container" style="padding: 2rem;">
+                    <div class="w3-row">
+                        <div class="w3-col l8">
+                            <h2 class="w3-xxlarge" style="margin: 0; color: white;">
+                                ⚙️ Preparar Entorno de Desarrollo
+                            </h2>
+                            <p style="margin: 0.5rem 0 0 0; color: rgba(255,255,255,0.9);">
+                                Configura el entorno de desarrollo para Ubuntu Touch con herramientas y dependencias esenciales
+                            </p>
+                        </div>
+                        <div class="w3-col l4 w3-right-align">
+                            <button onclick="checkDevEnvStatus()" class="w3-btn w3-round-large" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 0.75rem 1.5rem; font-weight: bold; transition: all 0.3s ease;">
+                                🔄 Verificar Estado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environment Status -->
+            <div class="dev-env-section">
+                <h3 style="color: var(--ub-orange); margin: 0 0 1.5rem 0; display: flex; align-items: center;">
+                    <span id="env-status-indicator" class="status-indicator"></span>
+                    Estado del Entorno Virtual
+                </h3>
+                <div id="env-status-content">
+                    <div class="w3-center">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+                        <h4 style="color: var(--ub-orange);">Verificando entorno...</h4>
+                        <p style="color: var(--ub-gray);">Comprobando el estado del entorno virtual global</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installed Packages -->
+            <div class="dev-env-section">
+                <h3 style="color: var(--ub-orange); margin: 0 0 1.5rem 0;">
+                    📦 Librerías Instaladas en el Entorno Global
+                </h3>
+                <div id="packages-content">
+                    <div class="w3-center">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
+                        <h4 style="color: var(--ub-orange);">Cargando librerías...</h4>
+                        <p style="color: var(--ub-gray);">Obteniendo lista de paquetes instalados</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="dev-env-section">
+                <h3 style="color: var(--ub-orange); margin: 0 0 1.5rem 0;">
+                    🚀 Acciones Rápidas
+                </h3>
+                <div class="w3-row">
+                    <div class="w3-col l6" style="padding: 0.5rem;">
+                        <button onclick="prepareDevEnvironment()" class="w3-btn w3-round-large w3-block" style="background: var(--ub-orange); color: white; padding: 1rem; font-weight: bold; transition: all 0.3s ease;">
+                            🔧 Preparar Entorno Completo
+                        </button>
+                        <p style="margin-top: 0.5rem; color: var(--ub-gray); font-size: 0.9rem;">
+                            Instala Python3, pip, virtualenv y configura el entorno global
+                        </p>
+                    </div>
+                    <div class="w3-col l6" style="padding: 0.5rem;">
+                        <button onclick="installPackage()" class="w3-btn w3-round-large w3-block" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 1rem; font-weight: bold; transition: all 0.3s ease;">
+                            📦 Instalar Paquete
+                        </button>
+                        <p style="margin-top: 0.5rem; color: var(--ub-gray); font-size: 0.9rem;">
+                            Instala una librería específica en el entorno global
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Development Tools Status -->
+            <div class="dev-env-section">
+                <h3 style="color: var(--ub-orange); margin: 0 0 1.5rem 0;">
+                    🛠️ Herramientas de Desarrollo
+                </h3>
+                <div id="dev-tools-status">
+                    <div class="w3-center">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                        <h4 style="color: var(--ub-orange);">Verificando herramientas...</h4>
+                        <p style="color: var(--ub-gray);">Comprobando disponibilidad de herramientas de desarrollo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Install Package Modal -->
+<div id="install-package-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%;">
+        <h3 style="color: var(--ub-orange); margin: 0 0 1.5rem 0;">📦 Instalar Paquete</h3>
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;">Nombre del paquete:</label>
+            <input type="text" id="package-name" placeholder="ej: flask, django, requests" style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;">
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button onclick="confirmInstallPackage()" class="w3-btn w3-round-large" style="background: var(--ub-orange); color: white; padding: 0.75rem 1.5rem; font-weight: bold; flex: 1;">
+                ✅ Instalar
+            </button>
+            <button onclick="closeInstallModal()" class="w3-btn w3-round-large" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; font-weight: bold; flex: 1;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check development environment status
+async function checkDevEnvStatus() {
+    const statusContent = document.getElementById('env-status-content');
+    const statusIndicator = document.getElementById('env-status-indicator');
+    
+    statusContent.innerHTML = `
+        <div class="w3-center">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+            <h4 style="color: var(--ub-orange);">Verificando entorno...</h4>
+            <p style="color: var(--ub-gray);">Comprobando el estado del entorno virtual global</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/devtools/venv_status');
+        const data = await response.json();
+        
+        if (data.success) {
+            statusIndicator.className = 'status-indicator status-ready';
+            statusContent.innerHTML = `
+                <div style="background: rgba(76,175,80,0.1); border: 1px solid #4CAF50; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
+                    <h4 style="color: #4CAF50; margin: 0 0 0.5rem 0;">✅ Entorno Virtual Listo</h4>
+                    <p style="margin: 0; color: var(--ub-light);">
+                        <strong>Ruta:</strong> ${data.venv_path || 'N/A'}<br>
+                        <strong>Python:</strong> ${data.python_path || 'N/A'}<br>
+                        <strong>Pip:</strong> ${data.pip_path || 'N/A'}
+                    </p>
+                </div>
+            `;
+            
+            // Load packages
+            loadInstalledPackages();
+        } else {
+            statusIndicator.className = 'status-indicator status-error';
+            statusContent.innerHTML = `
+                <div class="w3-center">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <h4 style="color: #f44336;">Entorno No Disponible</h4>
+                    <p style="color: var(--ub-gray);">${data.error || 'El entorno virtual no está configurado'}</p>
+                    <button onclick="prepareDevEnvironment()" class="w3-btn w3-round-large" style="background: var(--ub-orange); color: white; padding: 0.75rem 1.5rem; margin-top: 1rem;">
+                        🔧 Crear Entorno
+                    </button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        statusIndicator.className = 'status-indicator status-error';
+        statusContent.innerHTML = `
+            <div class="w3-center">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                <h4 style="color: #f44336;">Error de Conexión</h4>
+                <p style="color: var(--ub-gray);">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Load installed packages
+async function loadInstalledPackages() {
+    const packagesContent = document.getElementById('packages-content');
+    
+    packagesContent.innerHTML = `
+        <div class="w3-center">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📚</div>
+            <h4 style="color: var(--ub-orange);">Cargando librerías...</h4>
+            <p style="color: var(--ub-gray);">Obteniendo lista de paquetes instalados</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/devtools/list_packages');
+        const data = await response.json();
+        
+        if (data.success && data.packages && data.packages.length > 0) {
+            const packagesList = data.packages.map(pkg => `
+                <div class="package-item">
+                    <span class="package-name">${pkg.name}</span>
+                    <span class="package-version">${pkg.version}</span>
+                </div>
+            `).join('');
+            
+            packagesContent.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <p style="color: var(--ub-light); margin-bottom: 1rem;">
+                        <strong>${data.packages.length}</strong> paquetes instalados en el entorno global
+                    </p>
+                    <div class="package-list">
+                        ${packagesList}
+                    </div>
+                </div>
+            `;
+        } else {
+            packagesContent.innerHTML = `
+                <div class="w3-center">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                    <h4 style="color: var(--ub-orange);">Sin Paquetes</h4>
+                    <p style="color: var(--ub-gray);">No se encontraron paquetes instalados o el entorno no está disponible</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        packagesContent.innerHTML = `
+            <div class="w3-center">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                <h4 style="color: #f44336;">Error Cargando Paquetes</h4>
+                <p style="color: var(--ub-gray);">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Check development tools
+async function checkDevTools() {
+    const toolsContent = document.getElementById('dev-tools-status');
+    
+    try {
+        const response = await fetch('/api/devtools/check');
+        const data = await response.json();
+        
+        if (data.success) {
+            const tools = data.tools || {};
+            let toolsHtml = '';
+            
+            for (const [tool, status] of Object.entries(tools)) {
+                const statusIcon = status.available ? '✅' : '❌';
+                const statusColor = status.available ? '#4CAF50' : '#f44336';
+                const statusText = status.available ? 'Disponible' : 'No disponible';
+                
+                toolsHtml += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                        <span style="color: var(--ub-light); font-weight: 500;">${tool}</span>
+                        <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${statusText}</span>
+                    </div>
+                `;
+            }
+            
+            toolsContent.innerHTML = toolsHtml;
+        } else {
+            toolsContent.innerHTML = `
+                <div class="w3-center">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                    <h4 style="color: #f44336;">Error Verificando Herramientas</h4>
+                    <p style="color: var(--ub-gray);">${data.error || 'No se pudo verificar el estado de las herramientas'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        toolsContent.innerHTML = `
+            <div class="w3-center">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔌</div>
+                <h4 style="color: #f44336;">Error de Conexión</h4>
+                <p style="color: var(--ub-gray);">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Prepare development environment
+async function prepareDevEnvironment() {
+    try {
+        const response = await fetch('/api/devtools/prepare_env', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('✅ Entorno preparado exitosamente', 'success');
+            // Refresh status after a delay
+            setTimeout(() => {
+                checkDevEnvStatus();
+                checkDevTools();
+            }, 2000);
+        } else {
+            showNotification(`❌ Error preparando entorno: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`❌ Error de conexión: ${error.message}`, 'error');
+    }
+}
+
+// Install package functions
+function showInstallModal() {
+    document.getElementById('install-package-modal').style.display = 'block';
+}
+
+function closeInstallModal() {
+    document.getElementById('install-package-modal').style.display = 'none';
+    document.getElementById('package-name').value = '';
+}
+
+async function confirmInstallPackage() {
+    const packageName = document.getElementById('package-name').value.trim();
+    
+    if (!packageName) {
+        showNotification('❌ Por favor ingresa el nombre del paquete', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devtools/install_package', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ package_name: packageName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`✅ Paquete "${packageName}" instalado exitosamente`, 'success');
+            closeInstallModal();
+            // Refresh packages list
+            setTimeout(() => loadInstalledPackages(), 1000);
+        } else {
+            showNotification(`❌ Error instalando paquete: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`❌ Error de conexión: ${error.message}`, 'error');
+    }
+}
+
+// Notification system
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = 'w3-card w3-round-large';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        padding: 1rem 1.5rem;
+        max-width: 400px;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    const colors = {
+        success: { bg: '#4CAF50', text: 'white' },
+        error: { bg: '#f44336', text: 'white' },
+        info: { bg: '#2196F3', text: 'white' }
+    };
+    
+    const color = colors[type] || colors.info;
+    notification.style.background = color.bg;
+    notification.style.color = color.text;
+    notification.innerHTML = message;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+// Load all data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkDevEnvStatus();
+    checkDevTools();
+});
+
+// Add animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

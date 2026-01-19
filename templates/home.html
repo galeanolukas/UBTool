@@ -3,9 +3,44 @@
 {% block title %}UBTool - Ubuntu Touch Connection Tool{% endblock %}
 
 {% block extra_css %}
+<style>
+    .status-connected {
+        background: #4CAF50 !important;
+        box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+        animation: pulse-green 2s infinite;
+    }
+    
+    .status-disconnected {
+        background: #f44336 !important;
+        box-shadow: 0 0 8px rgba(244, 67, 54, 0.4);
+        animation: pulse-red 2s infinite;
+    }
+    
+    @keyframes pulse-green {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    @keyframes pulse-red {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .device-card {
+        transition: all 0.3s ease;
+    }
+    
+    .device-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
 <!-- Sidebar overlay -->
 <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
-{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -21,7 +56,10 @@
         <!-- Device Status Card -->
         <div style="display: flex; justify-content: center; margin-top: 3rem;">
             <div class="device-card" style="text-align: center; max-width: 600px; width: 100%;">
-                <h3 class="w3-text-orange" data-i18n="device.title">Estado del Dispositivo</h3>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <h3 class="w3-text-orange" data-i18n="device.title">Estado del Dispositivo</h3>
+                    <div id="status-indicator" style="width: 12px; height: 12px; border-radius: 50%; background: #666; transition: all 0.3s ease;"></div>
+                </div>
                 <div id="device-info" style="text-align: left;">
                     <p style="color: #666;" data-i18n="device.loading">Cargando información del dispositivo...</p>
                 </div>
@@ -104,6 +142,15 @@
             'status.disconnected': 'Desconectado',
             'device.title': 'Estado del Dispositivo',
             'device.loading': 'Cargando información del dispositivo...',
+            'device.tutorial.title': '🔧 Tutorial: Habilitar ADB en Ubuntu Touch',
+            'device.tutorial.step1': '1. Abre: Configuración del sistema',
+            'device.tutorial.step2': '2. Ve a: Información del sistema',
+            'device.tutorial.step3': '3. Busca: "Modo desarrollador"',
+            'device.tutorial.step4': '4. Activa: "Modo desarrollador"',
+            'device.tutorial.step5': '5. Busca: "Depuración de Android (ADB)"',
+            'device.tutorial.step6': '6. Activa: "Depuración de Android (ADB)"',
+            'device.tutorial.step7': '7. Conecta: USB y selecciona "Transferir archivos"',
+            'device.tutorial.note': '🔑 Si te pide clave, ingrésala para habilitar el modo',
             'hero.subtitle': 'Conecta y gestiona dispositivos Ubuntu Touch vía ADB',
             'tools.title': 'Herramientas Rápidas',
             'tools.subtitle': 'Acceso rápido a funciones ADB',
@@ -133,8 +180,8 @@
             'webapps.create.port': 'Puerto (opcional):',
             'webapps.create.port_ph': '8081',
             'webapps.create.port_hint': 'Si no especificas, se usará un puerto disponible automáticamente',
-            'webapps.create.venv': 'Crear entorno virtual (recomendado)',
-            'webapps.create.venv_hint': 'Aísla las dependencias de tu aplicación',
+            'webapps.create.venv': 'Usar entorno virtual global (recomendado)',
+            'webapps.create.venv_hint': 'Usa el entorno global compartido configurado en UBTool',
             'webapps.create.submit': '🚀 Crear WebApp',
             'webapps.create.creating': '⏳ Creando...',
             'webapps.create.success': '✅ Creado Exitosamente',
@@ -163,6 +210,15 @@
             'status.disconnected': 'Disconnected',
             'device.title': 'Device Status',
             'device.loading': 'Loading device information...',
+            'device.tutorial.title': '🔧 Tutorial: Enable ADB on Ubuntu Touch',
+            'device.tutorial.step1': '1. Open: System Settings',
+            'device.tutorial.step2': '2. Go to: System Information',
+            'device.tutorial.step3': '3. Search: "Developer mode"',
+            'device.tutorial.step4': '4. Enable: "Developer mode"',
+            'device.tutorial.step5': '5. Search: "Android debugging (ADB)"',
+            'device.tutorial.step6': '6. Enable: "Android debugging (ADB)"',
+            'device.tutorial.step7': '7. Connect: USB and select "Transfer files"',
+            'device.tutorial.note': '🔑 If asked for password, enter it to enable the mode',
             'hero.subtitle': 'Connect and manage Ubuntu Touch devices via ADB',
             'tools.title': 'Quick Tools',
             'tools.subtitle': 'Quick access to ADB features',
@@ -192,8 +248,8 @@
             'webapps.create.port': 'Port (optional):',
             'webapps.create.port_ph': '8081',
             'webapps.create.port_hint': 'If not specified, an available port will be used automatically',
-            'webapps.create.venv': 'Create virtual environment (recommended)',
-            'webapps.create.venv_hint': 'Isolates your app dependencies',
+            'webapps.create.venv': 'Use global virtual environment (recommended)',
+            'webapps.create.venv_hint': 'Uses the shared global environment configured in UBTool',
             'webapps.create.submit': '🚀 Create WebApp',
             'webapps.create.creating': '⏳ Creating...',
             'webapps.create.success': '✅ Successfully Created',
@@ -302,7 +358,46 @@
             } else {
                 statusIndicator.className = 'status-disconnected';
                 statusText.textContent = UBTOOL_I18N[currentLanguage]['status.disconnected'];
-                deviceInfo.innerHTML = `<p style="color: #f44336;">${data.error || 'No se puede conectar al dispositivo'}</p>`;
+                
+                // Show ADB tutorial when disconnected
+                deviceInfo.innerHTML = `
+                    <div style="margin-bottom: 1.5rem;">
+                        <p style="color: #f44336; margin-bottom: 1rem;">${data.error || 'No se puede conectar al dispositivo'}</p>
+                    </div>
+                    
+                    <div style="background: rgba(233,84,32,0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 1.5rem;">
+                        <h4 style="color: var(--ub-orange); margin: 0 0 1rem 0; font-size: 1.1rem;" data-i18n="device.tutorial.title">🔧 Tutorial: Habilitar ADB en Ubuntu Touch</h4>
+                        
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+                            <ol style="margin: 0; padding-left: 1.5rem; color: var(--ub-light); line-height: 1.6;">
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step1">1. Abre: Configuración del sistema</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step2">2. Ve a: Información del sistema</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step3">3. Busca: "Modo desarrollador"</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step4">4. Activa: "Modo desarrollador"</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step5">5. Busca: "Depuración de Android (ADB)"</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step6">6. Activa: "Depuración de Android (ADB)"</li>
+                                <li style="margin-bottom: 0.5rem;" data-i18n="device.tutorial.step7">7. Conecta: USB y selecciona "Transferir archivos"</li>
+                            </ol>
+                        </div>
+                        
+                        <div style="background: rgba(255,193,7,0.1); border-left: 4px solid #ffc107; padding: 0.75rem; margin-top: 1rem;">
+                            <p style="margin: 0; color: var(--ub-light); font-size: 0.9rem;" data-i18n="device.tutorial.note">
+                                💡 Si te pide clave, ingrésala para habilitar el modo
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 1.5rem;">
+                            <button onclick="checkDevice()" class="btn-ub" style="background: var(--ub-orange); color: white; padding: 0.75rem 1.5rem; border-radius: 6px;">
+                                🔄 Reintentar Conexión
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Apply translations to tutorial content
+                setTimeout(() => {
+                    applyTranslations(currentLanguage);
+                }, 100);
             }
         } catch (error) {
             console.error('Error checking device:', error);
@@ -411,7 +506,24 @@
                 const isDir = !!e.is_dir;
                 const size = e.size_human || '';
                 const rowStyle = 'display:flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; cursor: pointer;';
-                const left = isDir ? `📁 ${name}` : `📄 ${name}`;
+                
+                let left;
+                if (isDir) {
+                    left = `📁 ${name}`;
+                } else {
+                    const ext = (name.split('.').pop() || '').toLowerCase();
+                    const videoFormats = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', '3gp', 'flv', 'wmv', 'm4v', 'wav', 'weba', 'mpg', 'mpeg', 'm4a'];
+                    const imageFormats = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+                    
+                    if (videoFormats.includes(ext)) {
+                        left = `📹 ${name}`;
+                    } else if (imageFormats.includes(ext)) {
+                        left = `🖼️ ${name}`;
+                    } else {
+                        left = `📄 ${name}`;
+                    }
+                }
+                
                 html += `
                     <div style="${rowStyle}" onmouseover="this.style.background='rgba(233,84,32,0.10)'" onmouseout="this.style.background='transparent'" onclick="fmEntryClick(${isDir ? 'true' : 'false'}, '${encodeURIComponent(name)}')">
                         <div style="overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">${left}</div>
@@ -445,6 +557,25 @@
     }
 
     async function openFile(path) {
+        // Check if it's a video file first
+        const ext = (path.split('.').pop() || '').toLowerCase();
+        const videoFormats = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', '3gp', 'flv', 'wmv', 'm4v', 'wav', 'weba'];
+        
+        if (videoFormats.includes(ext)) {
+            // Open video directly in player
+            openBinaryViewer(path);
+            return;
+        }
+        
+        // Check if it's an image file
+        const imageFormats = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+        if (imageFormats.includes(ext)) {
+            // Open image directly in viewer
+            openBinaryViewer(path);
+            return;
+        }
+        
+        // For other files, try to open as text first
         try {
             const res = await fetch(`/api/files/text?path=${encodeURIComponent(path)}`);
             const data = await res.json();
@@ -477,14 +608,23 @@
 
         const url = `/api/files/raw?path=${encodeURIComponent(path)}`;
         const ext = (path.split('.').pop() || '').toLowerCase();
-        const isImage = ['png','jpg','jpeg','gif','bmp','webp','svg'].includes(ext);
-        const isVideo = ['mp4','webm','ogg','mov','mkv','avi','3gp'].includes(ext);
+        const isImage = ['png','jpg','jpeg','gif','bmp','webp','svg','ico'].includes(ext);
+        const isVideo = ['mp4','webm','ogg','mov','mkv','avi','3gp','flv','wmv','m4v','wav','weba','mpg','mpeg','m4a'].includes(ext);
 
         let body = '';
         if (isImage) {
             body = `<img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;" />`;
         } else if (isVideo) {
-            body = `<video src="${url}" controls style="max-width: 100%; max-height: 70vh; border-radius: 8px;"></video>`;
+            body = `
+                <video src="${url}" controls style="max-width: 100%; max-height: 70vh; border-radius: 8px;" autoplay>
+                    Tu navegador no soporta el elemento de video.
+                </video>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <p style="color: var(--ub-gray); font-size: 0.9rem;">
+                        📹 Reproduciendo: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${path}</code>
+                    </p>
+                </div>
+            `;
         } else {
             body = `<div style="opacity:0.9; margin-bottom: 1rem;">Archivo: <code>${path}</code></div>
                     <a class="btn-ub" href="${url}" target="_blank" rel="noopener">Abrir/Descargar</a>`;
@@ -493,14 +633,45 @@
         modal.innerHTML = `
             <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: auto;">
                 <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                    <h3 style="color: var(--ub-orange); margin: 0;">👁️ Viewer</h3>
+                    <h3 style="color: var(--ub-orange); margin: 0;">
+                        ${isImage ? '🖼️ Imagen' : isVideo ? '📹 Reproductor de Video' : '👁️ Viewer'}
+                    </h3>
                     <button onclick="closeFileViewer()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
                 </div>
-                ${body}
+                <div style="text-align: center;">
+                    ${body}
+                </div>
+                ${isVideo ? `
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem;">
+                    <a href="${url}" download="${path.split('/').pop()}" class="btn-ub" style="background: var(--ub-orange); color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px;">
+                        💾 Descargar Video
+                    </a>
+                    <button onclick="closeFileViewer()" class="btn-ub" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.5rem 1rem; border-radius: 6px;">
+                        Cerrar
+                    </button>
+                </div>
+                ` : ''}
             </div>
         `;
 
         document.body.appendChild(modal);
+        
+        // Close on escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeFileViewer();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeFileViewer();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        });
     }
 
     function openTextEditor(path, content, mime) {
@@ -907,367 +1078,9 @@
         }
     }
 
-    // Development Environment Functions
-    function prepareDevEnv() {
-        // Create modal for environment preparation
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        `;
-        
-        modal.innerHTML = `
-            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="color: var(--ub-orange); margin: 0;">⚙️ Preparar Entorno de Desarrollo</h3>
-                    <button onclick="this.closest('div[style*=position]').remove()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
-                </div>
-                
-                <div id="dev-env-status" style="margin-bottom: 1.5rem;">
-                    <p style="color: var(--ub-light); opacity: 0.8;">Verificando herramientas de desarrollo...</p>
-                </div>
-                
-                <div id="dev-env-details" style="display: none;">
-                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">Estado de Herramientas:</h4>
-                    <div id="tools-status" style="margin-bottom: 1.5rem;"></div>
-                    
-                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">Acciones Realizadas:</h4>
-                    <div id="actions-log" style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; max-height: 200px; overflow-y: auto;"></div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button id="prepare-btn" onclick="startDevEnvPreparation()" style="background: var(--ub-orange); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        🚀 Preparar Entorno
-                    </button>
-                    <button onclick="this.closest('div[style*=position]').remove()" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
-                        Cancelar
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Check current status on load
-        checkDevToolsStatus();
-        
-        // Close sidebar
-        if (isSidebarOpen) {
-            toggleSidebar();
-        }
-    }
+    // Note: Development environment preparation moved to dedicated /dev-env page
 
-    async function checkDevToolsStatus() {
-        try {
-            const response = await fetch('/api/devtools/check');
-            const data = await response.json();
-            
-            if (data.success) {
-                const statusDiv = document.getElementById('dev-env-status');
-                const detailsDiv = document.getElementById('dev-env-details');
-                const toolsDiv = document.getElementById('tools-status');
-                
-                statusDiv.innerHTML = `<p style="color: #4CAF50;">✅ Herramientas verificadas</p>`;
-                detailsDiv.style.display = 'block';
-                
-                toolsDiv.innerHTML = `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div style="background: ${data.tools.python.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.python.available ? '#4CAF50' : '#f44336'};">
-                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.python.available ? '#4CAF50' : '#f44336'};">🐍 Python3</h5>
-                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
-                                ${data.tools.python.available ? `✅ ${data.tools.python.version}` : '❌ No disponible'}
-                            </p>
-                        </div>
-                        <div style="background: ${data.tools.pip.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.pip.available ? '#4CAF50' : '#f44336'};">
-                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.pip.available ? '#4CAF50' : '#f44336'};">📦 Pip</h5>
-                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
-                                ${data.tools.pip.available ? `✅ ${data.tools.pip.version}` : '❌ No disponible'}
-                            </p>
-                        </div>
-                        <div style="background: ${data.tools.virtualenv.available ? 'rgba(76,175,80,0.1)' : 'rgba(244,67,54,0.1)'}; padding: 1rem; border-radius: 8px; border: 1px solid ${data.tools.virtualenv.available ? '#4CAF50' : '#f44336'};">
-                            <h5 style="margin: 0 0 0.5rem 0; color: ${data.tools.virtualenv.available ? '#4CAF50' : '#f44336'};">🌍 Virtualenv</h5>
-                            <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">
-                                ${data.tools.virtualenv.available ? `✅ ${data.tools.virtualenv.version || 'Disponible'}` : '❌ No disponible'}
-                            </p>
-                        </div>
-                    </div>
-                `;
-            }
-        } catch (error) {
-            document.getElementById('dev-env-status').innerHTML = `<p style="color: #f44336;">❌ Error verificando herramientas: ${error.message}</p>`;
-        }
-    }
-
-    async function startDevEnvPreparation() {
-        const prepareBtn = document.getElementById('prepare-btn');
-        const statusDiv = document.getElementById('dev-env-status');
-        const actionsLog = document.getElementById('actions-log');
-        
-        prepareBtn.disabled = true;
-        prepareBtn.textContent = '⏳ Preparando...';
-        statusDiv.innerHTML = '<p style="color: var(--ub-orange);">🔄 Preparando entorno de desarrollo...</p>';
-        actionsLog.innerHTML = '';
-        
-        try {
-            const response = await fetch('/api/devtools/prepare_env', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                statusDiv.innerHTML = `<p style="color: #4CAF50;">✅ ${data.message}</p>`;
-                
-                // Show actions log
-                if (data.details && data.details.actions) {
-                    actionsLog.innerHTML = data.details.actions.map(action => `
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 4px;">
-                            <strong>${action.step}:</strong> 
-                            <span style="color: ${action.return_code === 0 ? '#4CAF50' : '#f44336'};">
-                                ${action.return_code === 0 ? '✅' : '❌'}
-                            </span>
-                            ${action.stdout ? `<br><small>${action.stdout}</small>` : ''}
-                            ${action.stderr ? `<br><small style="color: #f44336;">${action.stderr}</small>` : ''}
-                        </div>
-                    `).join('');
-                }
-                
-                prepareBtn.textContent = '✅ Entorno Listo';
-                prepareBtn.style.background = '#4CAF50';
-                
-                // Auto-refresh tools status after 2 seconds
-                setTimeout(checkDevToolsStatus, 2000);
-            } else {
-                statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${data.error}</p>`;
-                prepareBtn.textContent = '🔄 Reintentar';
-                prepareBtn.disabled = false;
-            }
-        } catch (error) {
-            statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${error.message}</p>`;
-            prepareBtn.textContent = '🔄 Reintentar';
-            prepareBtn.disabled = false;
-        }
-    }
-
-    // Installed Apps Management
-    function loadInstalledApps() {
-        // Create modal for installed apps
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        `;
-        
-        modal.innerHTML = `
-            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="color: var(--ub-orange); margin: 0;">📋 Apps Instaladas</h3>
-                    <button onclick="this.closest('div[style*=position]').remove()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
-                </div>
-                
-                <div id="apps-status" style="margin-bottom: 1.5rem;">
-                    <p style="color: var(--ub-light); opacity: 0.8;">🔄 Cargando aplicaciones instaladas...</p>
-                </div>
-                
-                <div id="apps-list" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <button onclick="refreshAppsList()" style="background: var(--ub-orange); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
-                            🔄 Actualizar Lista
-                        </button>
-                        <div style="color: var(--ub-light); opacity: 0.8;">
-                            <span id="apps-count">0</span> aplicaciones encontradas
-                        </div>
-                    </div>
-                    
-                    <div id="apps-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-                        <!-- Apps will be loaded here -->
-                    </div>
-                </div>
-                
-                <div style="display: flex; justify-content: center; margin-top: 1.5rem;">
-                    <button onclick="this.closest('div[style*=position]').remove()" style="background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange); padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
-                        Cerrar
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Load apps list
-        refreshAppsList();
-        
-        // Close sidebar
-        if (isSidebarOpen) {
-            toggleSidebar();
-        }
-    }
-
-    async function refreshAppsList() {
-        const statusDiv = document.getElementById('apps-status');
-        const appsList = document.getElementById('apps-list');
-        const appsGrid = document.getElementById('apps-grid');
-        const appsCount = document.getElementById('apps-count');
-        
-        try {
-            const response = await fetch('/api/devtools/list_apps');
-            const data = await response.json();
-            
-            if (data.success) {
-                statusDiv.style.display = 'none';
-                appsList.style.display = 'block';
-                
-                appsCount.textContent = data.apps.length;
-                
-                if (data.apps.length === 0) {
-                    appsGrid.innerHTML = `
-                        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; opacity: 0.6;">
-                            <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
-                            <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">No hay aplicaciones instaladas</h4>
-                            <p>Crea tu primera WebApp usando el botón "Crear WebApp" en el sidebar.</p>
-                        </div>
-                    `;
-                } else {
-                    appsGrid.innerHTML = data.apps.map(app => `
-                        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h4 style="color: var(--ub-orange); margin: 0; font-size: 1.2rem;">🚀 ${app.name}</h4>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    ${app.has_venv ? '<span style="color: #4CAF50; font-size: 0.8rem;">✅ Venv</span>' : '<span style="color: #f44336; font-size: 0.8rem;">❌ Venv</span>'}
-                                </div>
-                            </div>
-                            
-                            <div style="margin-bottom: 1rem;">
-                                <p style="margin: 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
-                                    <strong>Ruta:</strong> ${app.path}
-                                </p>
-                                ${app.config.framework ? `
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
-                                        <strong>Framework:</strong> ${app.config.framework}
-                                    </p>
-                                ` : ''}
-                                ${app.config.port ? `
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.8; color: var(--ub-light);">
-                                        <strong>Puerto:</strong> ${app.config.port}
-                                    </p>
-                                ` : ''}
-                            </div>
-                            
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <button onclick="startApp('${app.name}')" style="background: #4CAF50; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                                    ▶️ Iniciar
-                                </button>
-                                <button onclick="stopApp('${app.name}')" style="background: #f44336; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                                    ⏹️ Detener
-                                </button>
-                                <button onclick="openApp('${app.name}')" style="background: var(--ub-orange); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                                    🌐 Abrir
-                                </button>
-                                <button onclick="deleteApp('${app.name}')" style="background: rgba(244,67,54,0.2); color: #f44336; border: 1px solid #f44336; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                                    🗑️ Eliminar
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            } else {
-                statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error cargando aplicaciones: ${data.error}</p>`;
-            }
-        } catch (error) {
-            statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error de conexión: ${error.message}</p>`;
-        }
-    }
-
-    async function startApp(appName) {
-        try {
-            const response = await fetch('/api/devtools/start_app', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_name: appName })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(`✅ ${data.message}\n🌐 URL: ${data.access_url}`);
-                refreshAppsList(); // Refresh to update status
-            } else {
-                alert(`❌ Error: ${data.error}`);
-            }
-        } catch (error) {
-            alert(`❌ Error de conexión: ${error.message}`);
-        }
-    }
-
-    async function stopApp(appName) {
-        try {
-            const response = await fetch('/api/devtools/stop_app', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_name: appName })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(`✅ ${data.message}`);
-                refreshAppsList(); // Refresh to update status
-            } else {
-                alert(`❌ Error: ${data.error}`);
-            }
-        } catch (error) {
-            alert(`❌ Error de conexión: ${error.message}`);
-        }
-    }
-
-    function openApp(appName) {
-        // Open app in new tab with dynamic port
-        window.open(`http://localhost:8081`, '_blank');
-    }
-
-    async function deleteApp(appName) {
-        if (!confirm(`⚠️ ¿Estás seguro de que quieres eliminar la aplicación "${appName}"? Esta acción no se puede deshacer.`)) {
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/devtools/delete_app', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_name: appName })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(`✅ ${data.message}`);
-                refreshAppsList(); // Refresh to update list
-            } else {
-                alert(`❌ Error: ${data.error}`);
-            }
-        } catch (error) {
-            alert(`❌ Error de conexión: ${error.message}`);
-        }
-    }
+    // Note: Apps management moved to dedicated /apps page
 
     // Sidebar Functions
     let sidebarTimeout;
@@ -1432,36 +1245,12 @@
                     </div>
                     
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--ub-light); font-weight: 500;" data-i18n="webapps.create.port">
-                            Puerto (opcional):
-                        </label>
-                        <input 
-                            type="number" 
-                            id="webapp-port" 
-                            data-i18n-placeholder="webapps.create.port_ph"
-                            placeholder="8081" 
-                            min="1024" 
-                            max="65535"
-                            style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
-                        />
-                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; display: block;" data-i18n="webapps.create.port_hint">
-                            Si no especificas, se usará un puerto disponible automáticamente
-                        </small>
-                    </div>
-                    
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input 
-                                type="checkbox" 
-                                id="webapp-venv" 
-                                checked
-                                style="width: auto; margin: 0;"
-                            />
-                            <span style="color: var(--ub-light);" data-i18n="webapps.create.venv">Crear entorno virtual (recomendado)</span>
-                        </label>
-                        <small style="color: var(--ub-gray); font-size: 0.8rem; margin-top: 0.25rem; margin-left: 1.5rem; display: block;" data-i18n="webapps.create.venv_hint">
-                            Aísla las dependencias de tu aplicación
-                        </small>
+                        <div style="background: rgba(233,84,32,0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 1rem;">
+                            <h5 style="color: var(--ub-orange); margin: 0 0 0.5rem 0; font-size: 0.9rem;">🌍 Entorno Virtual Global</h5>
+                            <p style="margin: 0; color: var(--ub-light); font-size: 0.85rem; line-height: 1.4;">
+                                Esta app usará el entorno virtual global compartido configurado en UBTool, optimizando el uso de recursos y dependencias.
+                            </p>
+                        </div>
                     </div>
                     
                     <div id="webapp-create-status" style="margin-bottom: 1rem; min-height: 1.5rem;"></div>
@@ -1516,8 +1305,6 @@
         
         const name = document.getElementById('webapp-name').value.trim();
         const framework = document.getElementById('webapp-framework').value;
-        const port = document.getElementById('webapp-port').value.trim();
-        const useVenv = document.getElementById('webapp-venv').checked;
         const statusDiv = document.getElementById('webapp-create-status');
         const submitBtn = document.getElementById('create-webapp-btn');
         
@@ -1532,16 +1319,14 @@
         statusDiv.innerHTML = `<p style="color: var(--ub-orange);">${UBTOOL_I18N[currentLanguage]['webapps.create.status_creating'] || '🔄 Creando aplicación web...'}</p>`;
         
         try {
-            const response = await fetch('/api/devtools/create_app', {
+            const response = await fetch('/api/devtools/create_env', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     app_name: name,
-                    framework: framework,
-                    port: port || null,
-                    use_venv: useVenv
+                    framework: framework
                 })
             });
             
@@ -1553,8 +1338,9 @@
                         <h4 style="color: #4CAF50; margin: 0 0 0.5rem 0;">✅ ${data.message}</h4>
                         <p style="margin: 0; color: var(--ub-light); font-size: 0.9rem;">
                             <strong>Ruta:</strong> ${data.app_path || 'N/A'}<br>
-                            ${data.access_url ? `<strong>URL:</strong> <a href="${data.access_url}" target="_blank" style="color: var(--ub-orange);">${data.access_url}</a><br>` : ''}
-                            ${data.next_steps ? `<strong>Siguientes pasos:</strong> ${data.next_steps}` : ''}
+                            <strong>Framework:</strong> ${data.framework || 'N/A'}<br>
+                            ${data.global_venv ? `<strong>Entorno Global:</strong> ${data.global_venv}<br>` : ''}
+                            ${data.next_steps ? `<strong>Siguientes pasos:</strong><br>${data.next_steps.join('<br>')}` : ''}
                         </p>
                     </div>
                 `;
@@ -1564,15 +1350,11 @@
                 submitBtn.textContent = UBTOOL_I18N[currentLanguage]['webapps.create.success'] || '✅ Creado Exitosamente';
                 submitBtn.style.background = '#4CAF50';
                 
-                // Auto-close modal after 3 seconds
+                // Auto-close modal after 5 seconds (longer to show next steps)
                 setTimeout(() => {
                     closeWebAppModal();
-                    // Refresh installed apps list if it's open
-                    const appsModal = document.getElementById('apps-list');
-                    if (appsModal) {
-                        refreshAppsList();
-                    }
-                }, 3000);
+                    // Note: Apps list refresh is now handled by the dedicated /apps page
+                }, 5000);
                 
             } else {
                 statusDiv.innerHTML = `<p style="color: #f44336;">❌ Error: ${data.error}</p>`;

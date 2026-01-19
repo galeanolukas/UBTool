@@ -461,6 +461,22 @@ async def index(request):
     return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
 
 
+@app.route('/apps')
+async def apps_page(request):
+    """Página de apps instaladas"""
+    from microdot import Response
+    html_content = render_template('apps.html')
+    return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
+
+
+@app.route('/dev-env')
+async def dev_env_page(request):
+    """Página de preparación de entorno de desarrollo"""
+    from microdot import Response
+    html_content = render_template('dev-env.html')
+    return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
+
+
 @app.route('/static/<path:path>')
 def static_files(request, path):
     """Servir archivos estáticos desde ./static"""
@@ -509,6 +525,147 @@ def list_terminal_sessions():
         })
 
 
+@app.route('/api/devtools/list_packages')
+async def list_packages(request):
+    """API: Listar paquetes instalados en el entorno virtual"""
+    try:
+        adb_bin = adb_manager.adb_path or 'adb'
+        global_venv_python = "/home/phablet/.ubtool/venv/bin/python"
+        
+        # List packages using pip list
+        cmd = f"{global_venv_python} -m pip list --format=json"
+        result = subprocess.run([adb_bin, 'shell', cmd], capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            try:
+                packages_data = json.loads(result.stdout)
+                packages = []
+                
+                for pkg in packages_data:
+                    packages.append({
+                        'name': pkg.get('name', 'Unknown'),
+                        'version': pkg.get('version', 'N/A')
+                    })
+                
+                return {
+                    'success': True,
+                    'packages': packages
+                }
+            except json.JSONDecodeError:
+                # Fallback to parsing plain text
+                lines = result.stdout.strip().split('\n')
+                packages = []
+                for line in lines:
+                    if '==' in line:
+                        name, version = line.split('==')
+                        packages.append({
+                            'name': name.strip(),
+                            'version': version.strip() if version else 'N/A'
+                        })
+                
+                return {
+                    'success': True,
+                    'packages': packages
+                }
+        else:
+            return {
+                'success': False,
+                'error': f'Error listando paquetes: {result.stderr}'
+            }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
+@app.route('/api/devtools/install_package', methods=['POST'])
+async def install_package(request):
+    """API: Instalar un paquete en el entorno virtual"""
+    try:
+        data = request.json or {}
+        package_name = data.get('package_name', '').strip()
+        
+        if not package_name:
+            return {
+                'success': False,
+                'error': 'Nombre del paquete requerido'
+            }
+        
+        adb_bin = adb_manager.adb_path or 'adb'
+        global_venv_pip = "/home/phablet/.ubtool/venv/bin/pip"
+        
+        # Install package
+        cmd = f"{global_venv_pip} install {package_name}"
+        result = subprocess.run([adb_bin, 'shell', cmd], capture_output=True, text=True, timeout=180)
+        
+        if result.returncode == 0:
+            return {
+                'success': True,
+                'message': f'Paquete {package_name} instalado exitosamente'
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'Error instalando {package_name}: {result.stderr}'
+            }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
+@app.route('/api/devtools/prepare_env', methods=['POST'])
+async def prepare_dev_environment(request):
+    """API: Preparar entorno de desarrollo completo"""
+    try:
+        adb_bin = adb_manager.adb_path or 'adb'
+        
+        # Commands to prepare development environment
+        commands = [
+            # Update package lists
+            "apt update",
+            
+            # Install essential development tools
+            "apt install -y python3 python3-pip python3-venv build-essential git curl wget",
+            
+            # Create global virtual environment directory
+            "mkdir -p /home/phablet/.ubtool",
+            
+            # Create virtual environment
+            "python3 -m venv /home/phablet/.ubtool/venv",
+            
+            # Upgrade pip in virtual environment
+            "/home/phablet/.ubtool/venv/bin/pip install --upgrade pip",
+            
+            # Install essential packages
+            "/home/phablet/.ubtool/venv/bin/pip install flask fastapi microdot jinja2 requests"
+        ]
+        
+        for cmd in commands:
+            result = subprocess.run([adb_bin, 'shell', cmd], capture_output=True, text=True, timeout=300)
+            if result.returncode != 0:
+                return {
+                    'success': False,
+                    'error': f'Error en comando: {cmd}',
+                    'details': result.stderr
+                }
+        
+        return {
+            'success': True,
+            'message': 'Entorno de desarrollo preparado exitosamente',
+            'venv_path': '/home/phablet/.ubtool/venv',
+            'python_path': '/home/phablet/.ubtool/venv/bin/python',
+            'pip_path': '/home/phablet/.ubtool/venv/bin/pip'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+
 @app.route('/api/devtools/venv_status')
 async def venv_status(request):
     """API: Verificar estado del entorno virtual global"""
@@ -522,23 +679,36 @@ async def venv_status(request):
             python_check = "test -f /home/phablet/.ubtool/venv/bin/python && echo 'ready' || echo 'incomplete'"
             python_result = subprocess.run(['adb', 'shell', python_check], capture_output=True, text=True, timeout=10)
             
-            if python_result.returncode == 0 and 'ready' in python_result.stdout:
+            # Verificar si pip está disponible en el venv
+            pip_check = "test -f /home/phablet/.ubtool/venv/bin/pip && echo 'ready' || echo 'incomplete'"
+            pip_result = subprocess.run(['adb', 'shell', pip_check], capture_output=True, text=True, timeout=10)
+            
+            if python_result.returncode == 0 and 'ready' in python_result.stdout and pip_result.returncode == 0 and 'ready' in pip_result.stdout:
                 return json.dumps({
                     'success': True,
                     'status': 'ready',
-                    'message': 'Entorno global listo'
+                    'message': 'Entorno global listo para usar',
+                    'venv_path': '/home/phablet/.ubtool/venv',
+                    'python_path': '/home/phablet/.ubtool/venv/bin/python',
+                    'pip_path': '/home/phablet/.ubtool/venv/bin/pip'
                 })
             else:
                 return json.dumps({
                     'success': True,
                     'status': 'incomplete',
-                    'message': 'Entorno global incompleto'
+                    'message': 'Entorno global incompleto',
+                    'venv_path': '/home/phablet/.ubtool/venv',
+                    'python_path': '/home/phablet/.ubtool/venv/bin/python',
+                    'pip_path': '/home/phablet/.ubtool/venv/bin/pip'
                 })
         else:
             return json.dumps({
                 'success': True,
                 'status': 'not_created',
-                'message': 'Entorno global no creado'
+                'message': 'Entorno global no creado',
+                'venv_path': '/home/phablet/.ubtool/venv',
+                'python_path': 'N/A',
+                'pip_path': 'N/A'
             })
             
     except Exception as e:
@@ -1056,6 +1226,9 @@ def check_dev_tools(request):
 def create_virtual_env(request):
     """Crear app web usando un entorno virtual global (compartido)."""
     try:
+        # Import configuration
+        import config
+        
         data = request.json or {}
         app_name = data.get('app_name', '').strip()
         framework = data.get('framework', 'microdot').strip()
@@ -1074,12 +1247,11 @@ def create_virtual_env(request):
             })
         
         adb_bin = adb_manager.adb_path or 'adb'
-        global_venv_dir = '/home/phablet/.ubtool/venv'
-        global_venv_python = f"{global_venv_dir}/bin/python"
-        global_venv_pip = f"{global_venv_dir}/bin/pip"
-
-        # App path (no per-app venv)
-        app_path = f"/home/phablet/Apps/{app_name}"
+        
+        # Use configuration from config.py
+        global_venv_python = config.GLOBAL_VENV_PYTHON
+        global_venv_pip = config.GLOBAL_VENV_PIP
+        app_path = f"{config.APPS_BASE_PATH}/{app_name}"
 
         # Ensure global venv exists
         chk = subprocess.run(
@@ -1090,20 +1262,18 @@ def create_virtual_env(request):
             return json.dumps({
                 'success': False,
                 'error': 'Entorno global no encontrado. Ejecuta primero: Preparar entorno',
-                'global_venv': global_venv_dir
+                'global_venv': config.GLOBAL_VENV_PATH
             })
 
         commands = [
             f"mkdir -p {app_path}",
         ]
 
-        # Ensure required deps exist in global venv (best effort, idempotent)
-        if framework == 'flask':
-            commands.append(f"{global_venv_pip} install -U flask gunicorn jinja2")
-        elif framework == 'microdot':
-            commands.append(f"{global_venv_pip} install -U microdot jinja2")
-        elif framework == 'fastapi':
-            commands.append(f"{global_venv_pip} install -U fastapi uvicorn jinja2")
+        # Install framework-specific packages using config
+        framework_packages = config.FRAMEWORK_PACKAGES.get(framework, [])
+        if framework_packages:
+            packages_str = " ".join(framework_packages)
+            commands.append(f"{global_venv_pip} install -U {packages_str}")
         
         # Ejecutar comandos
         for cmd in commands:
@@ -1118,20 +1288,19 @@ def create_virtual_env(request):
                     'details': (result.stderr or result.stdout)
                 })
         
-        # Crear archivo de configuración
+        # Crear archivo de configuración usando config
         config_content = f'''# App Configuration
 APP_NAME = "{app_name}"
 FRAMEWORK = "{framework}"
 APP_PATH = "{app_path}"
-PORT = 8081  # Puerto base, se puede incrementar
+PORT = {config.DEFAULT_APP_PORT}
+
+# Global Environment
+GLOBAL_VENV_PATH = "{config.GLOBAL_VENV_PATH}"
+GLOBAL_VENV_PYTHON = "{config.GLOBAL_VENV_PYTHON}"
 
 # Dependencies
-if FRAMEWORK == "flask":
-    REQUIRED_PACKAGES = ["flask", "gunicorn", "jinja2"]
-elif FRAMEWORK == "microdot":
-    REQUIRED_PACKAGES = ["microdot", "jinja2"]
-elif FRAMEWORK == "fastapi":
-    REQUIRED_PACKAGES = ["fastapi", "uvicorn", "jinja2"]
+REQUIRED_PACKAGES = {framework_packages}
 '''
         
         config_cmd = f"echo '{config_content}' > {app_path}/config.py"
@@ -1142,7 +1311,7 @@ elif FRAMEWORK == "fastapi":
             'message': f'App creada para {app_name} (usando entorno global)',
             'app_path': app_path,
             'framework': framework,
-            'global_venv': global_venv_dir,
+            'global_venv': config.GLOBAL_VENV_PATH,
             'next_steps': [
                 f'Crea tu app en {app_path}/app.py',
                 f'Python: {global_venv_python}',
@@ -1221,7 +1390,7 @@ def list_web_apps(request):
 def start_web_app(request):
     """Iniciar app web"""
     try:
-        data = request.get_json()
+        data = request.json or {}
         app_name = data.get('app_name', '').strip()
         
         if not app_name:
@@ -1267,7 +1436,7 @@ def start_web_app(request):
 def stop_web_app(request):
     """Detener app web"""
     try:
-        data = request.get_json()
+        data = request.json or {}
         app_name = data.get('app_name', '').strip()
         
         if not app_name:
@@ -1295,7 +1464,7 @@ def stop_web_app(request):
 def delete_web_app(request):
     """Eliminar app web"""
     try:
-        data = request.get_json()
+        data = request.json or {}
         app_name = data.get('app_name', '').strip()
         
         if not app_name:
