@@ -1,0 +1,42 @@
+<header class="header-container">
+    <div class="w3-content">
+        <div class="w3-row">
+            <div class="w3-col s12 m12 l12">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <!-- Left Controls -->
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <!-- Menu Toggle -->
+                        <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()">
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                            <span class="hamburger-line"></span>
+                        </button>
+                        
+                        <!-- Logo Container -->
+                        <div class="logo-container">
+                            <img src="/static/logo.png" alt="UBTool Logo" style="width: 48px; height: 48px; border-radius: 12px;" />
+                            <div>
+                                <h1 style="margin: 0; font-size: 1.5rem; font-weight: bold;">UBTool</h1>
+                                <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Ubuntu Touch Connection</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Controls -->
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <!-- Language Toggle -->
+                        <button id="lang-toggle" class="btn-ub" style="background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; font-size: 0.9rem;">
+                            🌐 EN
+                        </button>
+                        
+                        <!-- Device Status -->
+                        <div id="device-status" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <span id="status-indicator" class="status-disconnected">●</span>
+                            <span id="status-text" data-i18n="status.checking">Verificando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

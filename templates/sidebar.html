@@ -1,0 +1,63 @@
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <h3 style="color: var(--ub-orange); margin: 0;">🚀 UBTool</h3>
+        <button class="sidebar-close-btn" onclick="toggleSidebar()">×</button>
+    </div>
+    
+    <nav class="sidebar-nav">
+        <div class="sidebar-section">
+            <h4 style="color: var(--ub-orange); margin-bottom: 0.5rem; font-size: 0.9rem;">📱 Dispositivo</h4>
+            <ul class="sidebar-menu">
+                <li><a href="#" onclick="checkDevice()" class="sidebar-item">
+                    <span class="sidebar-icon">📊</span>
+                    <span class="sidebar-text">Estado del Dispositivo</span>
+                </a></li>
+                <li><a href="#" onclick="openTerminal()" class="sidebar-item">
+                    <span class="sidebar-icon">🖥️</span>
+                    <span class="sidebar-text">Terminal Shell</span>
+                </a></li>
+                <li><a href="#" onclick="openFileManager()" class="sidebar-item">
+                    <span class="sidebar-icon">📁</span>
+                    <span class="sidebar-text">File Manager</span>
+                </a></li>
+            </ul>
+        </div>
+        
+        <div class="sidebar-section">
+            <h4 style="color: var(--ub-orange); margin-bottom: 0.5rem; font-size: 0.9rem;">🌐 Desarrollo Web</h4>
+            <ul class="sidebar-menu">
+                <li><a href="#" onclick="prepareDevEnv()" class="sidebar-item">
+                    <span class="sidebar-icon">⚙️</span>
+                    <span class="sidebar-text">Preparar Entorno</span>
+                </a></li>
+                <li><a href="#" onclick="document.getElementById('webapp-name').focus()" class="sidebar-item">
+                    <span class="sidebar-icon">➕</span>
+                    <span class="sidebar-text">Crear WebApp</span>
+                </a></li>
+                <li><a href="#" onclick="loadInstalledApps()" class="sidebar-item">
+                    <span class="sidebar-icon">📋</span>
+                    <span class="sidebar-text">Apps Instaladas</span>
+                </a></li>
+            </ul>
+        </div>
+        
+        <div class="sidebar-section">
+            <h4 style="color: var(--ub-orange); margin-bottom: 0.5rem; font-size: 0.9rem;">⚡ Herramientas</h4>
+            <ul class="sidebar-menu">
+                <li><a href="#" onclick="showDeviceInfo()" class="sidebar-item">
+                    <span class="sidebar-icon">📱</span>
+                    <span class="sidebar-text">Info Detallada</span>
+                </a></li>
+                <li><a href="#" onclick="rebootDevice()" class="sidebar-item">
+                    <span class="sidebar-icon">🔄</span>
+                    <span class="sidebar-text">Reiniciar</span>
+                </a></li>
+                <li><a href="https://buymeacoffee.com/lukasgaleano" target="_blank" class="sidebar-item">
+                    <span class="sidebar-icon">☕</span>
+                    <span class="sidebar-text">Apoyar Proyecto</span>
+                </a></li>
+            </ul>
+        </div>
+    </nav>
+</div>

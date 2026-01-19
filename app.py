@@ -191,6 +191,48 @@ class ADBManager:
             except subprocess.TimeoutExpired:
                 info['storage'] = None
             
+            # Get OS info
+            try:
+                result = subprocess.run([
+                    self.adb_path, '-s', device_id, 'shell',
+                    'uname -a'
+                ], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    uname_info = result.stdout.strip()
+                    info['os_info'] = uname_info
+                    # Parse OS name and version from uname
+                    if 'Ubuntu' in uname_info:
+                        info['os_name'] = 'Ubuntu Touch'
+                        # Try to extract version
+                        import re
+                        version_match = re.search(r'Ubuntu (\d+\.\d+)', uname_info)
+                        if version_match:
+                            info['os_version'] = version_match.group(1)
+                    else:
+                        info['os_name'] = uname_info
+                else:
+                    info['os_info'] = 'N/A'
+                    info['os_name'] = 'N/A'
+                    info['os_version'] = 'N/A'
+            except subprocess.TimeoutExpired:
+                info['os_info'] = 'Timeout'
+                info['os_name'] = 'Timeout'
+                info['os_version'] = 'Timeout'
+
+            # Get IP address
+            try:
+                result = subprocess.run([
+                    self.adb_path, '-s', device_id, 'shell',
+                    "ip route get 1 2>/dev/null | awk '{print $7}' || ip addr show 2>/dev/null | grep 'inet ' | head -1 | awk '{print $2}' | cut -d'/' -f1 || hostname -I 2>/dev/null || echo 'N/A'"
+                ], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    ip = result.stdout.strip()
+                    info['ip_address'] = ip if ip and ip != 'N/A' else 'N/A'
+                else:
+                    info['ip_address'] = 'N/A'
+            except subprocess.TimeoutExpired:
+                info['ip_address'] = 'Timeout'
+            
             return info
             
         except Exception as e:
@@ -1115,7 +1157,7 @@ elif FRAMEWORK == "fastapi":
         })
 
 @app.route('/api/devtools/list_apps', methods=['GET'])
-def list_web_apps():
+def list_web_apps(request):
     """Listar apps web instaladas"""
     try:
         # Listar directorios en /home/phablet/Apps
@@ -1176,7 +1218,7 @@ def list_web_apps():
         })
 
 @app.route('/api/devtools/start_app', methods=['POST'])
-def start_web_app():
+def start_web_app(request):
     """Iniciar app web"""
     try:
         data = request.get_json()
@@ -1222,7 +1264,7 @@ def start_web_app():
         })
 
 @app.route('/api/devtools/stop_app', methods=['POST'])
-def stop_web_app():
+def stop_web_app(request):
     """Detener app web"""
     try:
         data = request.get_json()
@@ -1248,6 +1290,497 @@ def stop_web_app():
             'success': False,
             'error': str(e)
         })
+
+@app.route('/api/devtools/delete_app', methods=['POST'])
+def delete_web_app(request):
+    """Eliminar app web"""
+    try:
+        data = request.get_json()
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Detener app primero
+        stop_cmd = f"pkill -f '/home/phablet/Apps/{app_name}.*app.py' || pkill -f 'app.py.*{app_name}'"
+        subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
+        
+        # Eliminar directorio de la app
+        delete_cmd = f"rm -rf /home/phablet/Apps/{app_name}"
+        result = subprocess.run(['adb', 'shell', delete_cmd], timeout=10)
+        
+        if result.returncode == 0:
+            return json.dumps({
+                'success': True,
+                'message': f'App {app_name} eliminada correctamente'
+            })
+        else:
+            return json.dumps({
+                'success': False,
+                'error': f'Error al eliminar app {app_name}'
+            })
+        
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/devtools/prepare_deploy', methods=['POST'])
+def prepare_app_for_deployment(request):
+    """Preparar webapp para deployment con estructura completa y archivos necesarios"""
+    try:
+        data = request.json or {}
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        adb_bin = adb_manager.adb_path or 'adb'
+        app_path = f"/home/phablet/Apps/{app_name}"
+        deploy_path = f"/home/phablet/Apps/{app_name}_deploy"
+        
+        # Verificar que la app existe
+        check_cmd = f"test -d {app_path}"
+        check_result = subprocess.run([adb_bin, 'shell', check_cmd], timeout=5)
+        if check_result.returncode != 0:
+            return json.dumps({
+                'success': False,
+                'error': f'La app {app_name} no existe'
+            })
+        
+        # Leer configuración de la app
+        config_check = subprocess.run(
+            [adb_bin, 'shell', f'cat {app_path}/config.py || echo ""'],
+            capture_output=True, text=True, timeout=10
+        )
+        
+        config = {}
+        if config_check.returncode == 0:
+            for line in config_check.stdout.strip().split('\n'):
+                if '=' in line and not line.strip().startswith('#'):
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip().strip('"\'')
+        
+        framework = config.get('FRAMEWORK', 'microdot')
+        port = config.get('PORT', '8081')
+        
+        # Comandos para preparar estructura de deployment
+        commands = [
+            # Crear directorio de deployment
+            f"rm -rf {deploy_path}",
+            f"mkdir -p {deploy_path}",
+            f"mkdir -p {deploy_path}/templates",
+            f"mkdir -p {deploy_path}/static/css",
+            f"mkdir -p {deploy_path}/static/js",
+            f"mkdir -p {deploy_path}/static/images",
+            
+            # Copiar archivos existentes
+            f"cp -r {app_path}/* {deploy_path}/ 2>/dev/null || true",
+        ]
+        
+        # Crear requirements.txt
+        requirements_content = f"""# Requirements for {app_name}
+# Framework dependencies
+{framework}==latest
+jinja2==3.1.2
+
+# Production server
+gunicorn==21.2.0
+
+# Utilities
+click==8.1.7
+"""
+        if framework == 'flask':
+            requirements_content = requirements_content.replace('flask==latest', 'flask==2.3.3')
+        elif framework == 'fastapi':
+            requirements_content = requirements_content.replace('fastapi==latest', 'fastapi==0.104.1')
+            requirements_content = requirements_content.replace('gunicorn==21.2.0', 'uvicorn[standard]==0.24.0')
+        elif framework == 'microdot':
+            requirements_content = requirements_content.replace('microdot==latest', 'microdot==2.0.0')
+        
+        # Crear app.py mejorado con Click CLI
+        app_py_content = f'''#!/usr/bin/env python3
+"""
+{app_name} - Web Application
+Framework: {framework}
+"""
+
+import os
+import sys
+import click
+from pathlib import Path
+
+# Framework imports
+{get_framework_imports(framework)}
+
+# App configuration
+BASE_DIR = Path(__file__).parent
+TEMPLATE_DIR = BASE_DIR / "templates"
+STATIC_DIR = BASE_DIR / "static"
+
+{get_app_code(framework, app_name)}
+
+@click.group()
+@click.version_option(version="1.0.0")
+def cli():
+    """{app_name} - Web Application CLI"""
+    pass
+
+@cli.command()
+@click.option('--host', default='0.0.0.0', help='Host to bind to')
+@click.option('--port', default={port}, help='Port to bind to')
+@click.option('--debug', is_flag=True, help='Enable debug mode')
+def run(host, port, debug):
+    """Run the web application"""
+    {get_run_code(framework, host, port, debug)}
+
+@cli.command()
+@click.option('--output', default='dist', help='Output directory for deployment')
+def build(output):
+    """Build the application for deployment"""
+    click.echo(f"Building {app_name} for deployment...")
+    
+    # Create output directory
+    output_dir = Path(output)
+    output_dir.mkdir(exist_ok=True)
+    
+    # Copy application files
+    import shutil
+    shutil.copytree('templates', output_dir / 'templates', dirs_exist_ok=True)
+    shutil.copytree('static', output_dir / 'static', dirs_exist_ok=True)
+    shutil.copy('app.py', output_dir)
+    shutil.copy('requirements.txt', output_dir)
+    shutil.copy('config.py', output_dir)
+    
+    click.echo(f"✅ Build completed in {{output_dir}}")
+    click.echo("Deploy with: python app.py run")
+
+@cli.command()
+def deploy():
+    """Deploy preparation checklist"""
+    click.echo("🚀 Deployment Checklist for {app_name}")
+    click.echo()
+    
+    # Check requirements
+    if Path('requirements.txt').exists():
+        click.echo("✅ requirements.txt found")
+    else:
+        click.echo("❌ requirements.txt missing")
+    
+    # Check templates
+    if Path('templates').exists():
+        templates = list(Path('templates').glob('*.html'))
+        click.echo(f"✅ {{len(templates)}} template(s) found")
+    else:
+        click.echo("❌ templates directory missing")
+    
+    # Check static files
+    if Path('static').exists():
+        click.echo("✅ static directory found")
+    else:
+        click.echo("❌ static directory missing")
+    
+    # Check app.py
+    if Path('app.py').exists():
+        click.echo("✅ app.py found")
+    else:
+        click.echo("❌ app.py missing")
+    
+    click.echo()
+    click.echo("📋 Next steps:")
+    click.echo("1. Run: pip install -r requirements.txt")
+    click.echo("2. Run: python app.py run --host 0.0.0.0 --port {port}")
+    click.echo("3. Access: http://localhost:{port}")
+
+if __name__ == '__main__':
+    cli()
+'''
+        
+        # Crear Dockerfile
+        dockerfile_content = f'''FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \\
+    gcc \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE {port}
+
+# Run the application
+CMD ["python", "app.py", "run", "--host", "0.0.0.0", "--port", "{port}"]
+'''
+        
+        # Crear docker-compose.yml
+        docker_compose_content = f'''version: '3.8'
+
+services:
+  {app_name}:
+    build: .
+    ports:
+      - "{port}:{port}"
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+'''
+        
+        # Crear .dockerignore
+        dockerignore_content = '''__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+.venv
+venv/
+ENV/
+env/
+'''
+        
+        # Crear README.md para la app
+        readme_content = f'''# {app_name}
+
+Web application built with {framework}.
+
+## Features
+
+- Modern web framework ({framework})
+- CLI interface with Click
+- Docker support
+- Production-ready structure
+
+## Quick Start
+
+### Local Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python app.py run
+
+# Or with custom options
+python app.py run --host 0.0.0.0 --port {port}
+```
+
+### Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or build manually
+docker build -t {app_name} .
+docker run -p {port}:{port} {app_name}
+```
+
+## CLI Commands
+
+- `python app.py run` - Start the web server
+- `python app.py build` - Build for deployment
+- `python app.py deploy` - Show deployment checklist
+
+## Project Structure
+
+```
+{app_name}/
+├── app.py              # Main application
+├── config.py           # Configuration
+├── requirements.txt    # Python dependencies
+├── Dockerfile          # Docker configuration
+├── docker-compose.yml  # Docker Compose setup
+├── .dockerignore       # Docker ignore file
+├── templates/         # HTML templates
+├── static/           # Static files
+│   ├── css/
+│   ├── js/
+│   └── images/
+└── README.md         # This file
+```
+
+## Configuration
+
+Edit `config.py` to modify application settings:
+
+- `APP_NAME`: Application name
+- `FRAMEWORK`: Web framework used
+- `PORT`: Server port
+- `REQUIRED_PACKAGES`: Python dependencies
+
+## License
+
+MIT License
+'''
+        
+        # Ejecutar comandos de creación
+        for cmd in commands:
+            result = subprocess.run(
+                [adb_bin, 'shell', cmd],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode != 0:
+                return json.dumps({
+                    'success': False,
+                    'error': f'Error en comando: {cmd}',
+                    'details': result.stderr
+                })
+        
+        # Escribir archivos usando base64 para evitar problemas con caracteres especiales
+        import base64
+        
+        files_to_create = [
+            ('requirements.txt', requirements_content),
+            ('app.py', app_py_content),
+            ('Dockerfile', dockerfile_content),
+            ('docker-compose.yml', docker_compose_content),
+            ('.dockerignore', dockerignore_content),
+            ('README.md', readme_content)
+        ]
+        
+        for filename, content in files_to_create:
+            content_b64 = base64.b64encode(content.encode()).decode()
+            write_cmd = f"echo '{content_b64}' | base64 -d > {deploy_path}/{filename}"
+            result = subprocess.run([adb_bin, 'shell', write_cmd], timeout=30)
+            if result.returncode != 0:
+                return json.dumps({
+                    'success': False,
+                    'error': f'Error al crear {filename}',
+                    'details': result.stderr
+                })
+        
+        # Hacer ejecutable el app.py
+        chmod_cmd = f"chmod +x {deploy_path}/app.py"
+        subprocess.run([adb_bin, 'shell', chmod_cmd], timeout=10)
+        
+        return json.dumps({
+            'success': True,
+            'message': f'App {app_name} preparada para deployment',
+            'deploy_path': deploy_path,
+            'structure': {
+                'app_py': 'Main application with Click CLI',
+                'requirements': 'Python dependencies',
+                'dockerfile': 'Docker configuration',
+                'docker_compose': 'Docker Compose setup',
+                'readme': 'Documentation',
+                'templates': 'HTML templates directory',
+                'static': 'Static files directory (css, js, images)'
+            },
+            'next_steps': [
+                f'cd {deploy_path}',
+                'pip install -r requirements.txt',
+                'python app.py run',
+                f'Access: http://localhost:{port}',
+                'Or use: docker-compose up --build'
+            ]
+        })
+        
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': str(e)
+        })
+
+def get_framework_imports(framework):
+    """Obtener imports según el framework"""
+    imports = {
+        'flask': 'from flask import Flask, render_template, request as flask_request',
+        'microdot': 'from microdot import Microdot, send_file, Request as MicrodotRequest',
+        'fastapi': 'from fastapi import FastAPI, Request as FastAPIRequest'
+    }
+    return imports.get(framework, '')
+
+def get_app_code(framework, app_name):
+    """Obtener código de la app según el framework"""
+    if framework == 'flask':
+        return f'''
+app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATIC_DIR))
+
+@app.route('/')
+def index():
+    return render_template('index.html', app_name="{app_name}")
+
+@app.route('/api/status')
+def status():
+    return {{"status": "running", "app": "{app_name}"}}
+'''
+    elif framework == 'microdot':
+        return f'''
+app = Microdot()
+
+@app.route('/')
+async def index(request):
+    template_path = TEMPLATE_DIR / 'index.html'
+    if template_path.exists():
+        return send_file(str(template_path))
+    return f"<h1>{app_name}</h1><p>App is running!</p>"
+
+@app.route('/api/status')
+async def status(request):
+    return {{"status": "running", "app": "{app_name}"}}
+'''
+    elif framework == 'fastapi':
+        return f'''
+app = FastAPI()
+
+@app.get('/')
+async def index():
+    return {{"message": "Welcome to {app_name}", "status": "running"}}
+
+@app.get('/api/status')
+async def status():
+    return {{"status": "running", "app": "{app_name}"}}
+'''
+    return ''
+
+def get_run_code(framework, host, port, debug):
+    """Obtener código para correr la app según el framework"""
+    if framework == 'flask':
+        return f'''
+app.run(host=host, port=port, debug=debug)
+'''
+    elif framework == 'microdot':
+        return f'''
+app.run(host=host, port=port, debug=debug)
+'''
+    elif framework == 'fastapi':
+        return f'''
+import uvicorn
+uvicorn.run(app, host=host, port=port, debug=debug)
+'''
+    return ''
 
 # API Routes
 @app.route('/api/device/status')

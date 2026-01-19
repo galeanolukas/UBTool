@@ -1,1275 +1,892 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UBTool - Ubuntu Touch Connection</title>
-    <link rel="stylesheet" href="/static/w3.css">
-    <link rel="stylesheet" href="/static/css/ubtool.css">
-    <style>
-        :root {
-            --ub-orange: #E95420;
-            --ub-dark: #312D2A;
-            --ub-light: #FFFFFF;
-            --ub-gray: #AEA79F;
-            --ub-light-gray: #F7F3F0;
-        }
+{% extends "base.html" %}
+
+{% block title %}UBTool - Ubuntu Touch Connection Tool{% endblock %}
+
+{% block extra_css %}
+<!-- Sidebar overlay -->
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section" style="background: linear-gradient(135deg, var(--ub-dark) 0%, #2c2c2c 100%); padding: 4rem 0; text-align: center;">
+    <div class="w3-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+        <h1 class="hero-title" style="color: var(--ub-orange); margin-bottom: 1rem;">
+            🚀 UBTool
+        </h1>
+        <p class="hero-subtitle" style="color: var(--ub-light); opacity: 0.9;">
+            <span data-i18n="hero.subtitle">Conecta y gestiona dispositivos Ubuntu Touch vía ADB</span>
+        </p>
         
-        body {
-            background-color: var(--ub-dark);
-            color: var(--ub-light);
-            font-family: 'Ubuntu', 'Lato', 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+        <!-- Device Status Card -->
+        <div style="display: flex; justify-content: center; margin-top: 3rem;">
+            <div class="device-card" style="text-align: center; max-width: 600px; width: 100%;">
+                <h3 class="w3-text-orange" data-i18n="device.title">Estado del Dispositivo</h3>
+                <div id="device-info" style="text-align: left;">
+                    <p style="color: #666;" data-i18n="device.loading">Cargando información del dispositivo...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section" style="padding: 4rem 0; background: rgba(0,0,0,0.2);">
+    <div class="w3-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+        <div style="text-align: center; margin-bottom: 3rem;">
+            <h2 class="hero-title w3-text-orange" style="margin-bottom: 1rem;" data-i18n="features.title">Características</h2>
+            <p style="opacity: 0.8; font-size: 1.1rem;" data-i18n="features.subtitle">Descubre las potentes funcionalidades de UBTool</p>
+        </div>
         
-        /* Responsive Typography */
-        .hero-title {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: bold;
-            margin: 0;
-        }
+        <div style="display: flex; justify-content: center; align-items: stretch; gap: 3rem; margin-bottom: 3rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🔗</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.adb.title">Conexión ADB</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.adb.desc">Conecta y gestiona dispositivos Ubuntu Touch vía ADB con interfaz web moderna</p>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">📱</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.devices.title">Gestión de Dispositivos</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.devices.desc">Visualiza y controla múltiples dispositivos conectados simultáneamente</p>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🌐</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.web.title">Interfaz Web</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.web.desc">Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch</p>
+                </div>
+            </div>
+        </div>
         
-        .hero-subtitle {
-            font-size: clamp(1rem, 3vw, 1.5rem);
-            margin: 1rem 0;
+        <!-- Second Row of Features -->
+        <div style="display: flex; justify-content: center; align-items: stretch; gap: 3rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🖥️</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;" data-i18n="features.terminal.title">Terminal Integrada</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;" data-i18n="features.terminal.desc">Ejecuta comandos ADB directamente desde la interfaz web</p>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">📁</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;">File Manager</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;">Explora y gestiona archivos del dispositivo con interfaz intuitiva</p>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; max-width: 350px;">
+                <div class="device-card" style="text-align: center; height: 100%; padding: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 1.5rem;">🚀</div>
+                    <h3 style="color: var(--ub-orange); margin-bottom: 1.5rem;">Web Apps</h3>
+                    <p style="line-height: 1.6; opacity: 0.9; font-size: 1rem;">Crea y gestiona aplicaciones web con Click y prepara para deployment</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Internationalization
+    const UBTOOL_I18N = {
+        'es': {
+            'status.checking': 'Verificando...',
+            'status.connected': 'Conectado',
+            'status.disconnected': 'Desconectado',
+            'device.title': 'Estado del Dispositivo',
+            'device.loading': 'Cargando información del dispositivo...',
+            'hero.subtitle': 'Conecta y gestiona dispositivos Ubuntu Touch vía ADB',
+            'tools.title': 'Herramientas Rápidas',
+            'tools.subtitle': 'Acceso rápido a funciones ADB',
+            'tools.shell': '🖥️ Shell',
+            'tools.reboot': '🔄 Reiniciar',
+            'webapps.title': 'Apps Web',
+            'webapps.prepare': 'Preparar entorno global (pip/virtualenv)',
+            'webapps.name': 'Nombre:',
+            'webapps.name_ph': 'mi_app',
+            'webapps.framework': 'Framework:',
+            'webapps.create': 'Crear WebApp',
+            'webapps.installed.title': 'Apps Instaladas',
+            'webapps.installed.refresh': '🔄 Actualizar Lista',
+            'webapps.installed.loading': 'Cargando...',
+            'webapps.installed.start': '▶️ Iniciar',
+            'webapps.installed.stop': '⏹️ Detener',
+            'webapps.installed.delete': '🗑️ Eliminar',
+            'webapps.installed.prepare': '🚀 Preparar',
+            'webapps.installed.no_apps': 'No hay apps instaladas',
+            'files.title': '📁 File Manager',
+            'files.subtitle': 'Explora archivos del dispositivo',
+            'files.open': 'Abrir',
+            'features.title': 'Características',
+            'features.adb.title': 'Conexión ADB',
+            'features.adb.desc': 'Conecta y gestiona dispositivos Ubuntu Touch vía ADB con interfaz web moderna',
+            'features.devices.title': 'Gestión de Dispositivos',
+            'features.devices.desc': 'Visualiza y controla múltiples dispositivos conectados simultáneamente',
+            'features.web.title': 'Interfaz Web',
+            'features.web.desc': 'Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch',
+            'footer.about': 'Acerca de UBTool',
+            'footer.description': 'Herramienta moderna para gestionar dispositivos Ubuntu Touch vía ADB con interfaz web intuitiva.',
+            'footer.support': 'Apoya el proyecto',
+            'footer.buy_coffee': 'Buy Me a Coffee',
+            'footer.rights': 'Todos los derechos reservados.'
+        },
+        'en': {
+            'status.checking': 'Checking...',
+            'status.connected': 'Connected',
+            'status.disconnected': 'Disconnected',
+            'device.title': 'Device Status',
+            'device.loading': 'Loading device information...',
+            'hero.subtitle': 'Connect and manage Ubuntu Touch devices via ADB',
+            'tools.title': 'Quick Tools',
+            'tools.subtitle': 'Quick access to ADB features',
+            'tools.shell': '🖥️ Shell',
+            'tools.reboot': '🔄 Reboot',
+            'webapps.title': 'Web Apps',
+            'webapps.prepare': 'Prepare global environment (pip/virtualenv)',
+            'webapps.name': 'Name:',
+            'webapps.name_ph': 'my_app',
+            'webapps.framework': 'Framework:',
+            'webapps.create': 'Create WebApp',
+            'webapps.installed.title': 'Installed Apps',
+            'webapps.installed.refresh': '🔄 Refresh List',
+            'webapps.installed.loading': 'Loading...',
+            'webapps.installed.start': '▶️ Start',
+            'webapps.installed.stop': '⏹️ Stop',
+            'webapps.installed.delete': '🗑️ Delete',
+            'webapps.installed.prepare': '🚀 Prepare',
+            'webapps.installed.no_apps': 'No installed apps',
+            'files.title': '📁 File Manager',
+            'files.subtitle': 'Browse device files',
+            'files.open': 'Open',
+            'features.title': 'Features',
+            'features.adb.title': 'ADB Connection',
+            'features.adb.desc': 'Connect and manage Ubuntu Touch devices via ADB with a modern web UI',
+            'features.devices.title': 'Device Management',
+            'features.devices.desc': 'View and control multiple connected devices simultaneously',
+            'features.web.title': 'Web Interface',
+            'features.web.desc': 'Access from any modern browser with responsive design and Ubuntu Touch styling',
+            'footer.about': 'About UBTool',
+            'footer.description': 'Modern tool for managing Ubuntu Touch devices via ADB with intuitive web interface.',
+            'footer.support': 'Support the project',
+            'footer.buy_coffee': 'Buy Me a Coffee',
+            'footer.rights': 'All rights reserved.'
         }
+    };
+
+    let currentLanguage = localStorage.getItem('ubtool_lang') || 'es';
+
+    function getCurrentLanguage() {
+        return currentLanguage;
+    }
+
+    function applyTranslations(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('ubtool_lang', lang);
         
-        /* Header Styles */
-        .header-container {
-            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
-            padding: 1rem 0;
-            box-shadow: 0 4px 20px rgba(233, 84, 32, 0.3);
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (UBTOOL_I18N[lang] && UBTOOL_I18N[lang][key]) {
+                element.textContent = UBTOOL_I18N[lang][key];
+            }
+        });
+        
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+            const key = element.getAttribute('data-i18n-placeholder');
+            if (UBTOOL_I18N[lang] && UBTOOL_I18N[lang][key]) {
+                element.placeholder = UBTOOL_I18N[lang][key];
+            }
+        });
+        
+        // Update language toggle button
+        const langToggle = document.getElementById('lang-toggle');
+        if (langToggle) {
+            langToggle.textContent = lang === 'es' ? '🌐 EN' : '🌐 ES';
         }
-        
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+    }
+
+    function toggleLanguage() {
+        const newLang = currentLanguage === 'es' ? 'en' : 'es';
+        applyTranslations(newLang);
+    }
+
+    // Device status checking
+    async function checkDevice() {
+        try {
+            const response = await fetch('/api/device/status');
+            const data = await response.json();
+            
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const deviceInfo = document.getElementById('device-info');
+            
+            if (data.connected) {
+                statusIndicator.className = 'status-connected';
+                statusText.textContent = UBTOOL_I18N[currentLanguage]['status.connected'];
+                
+                // Load device info
+                const infoResponse = await fetch('/api/device/info');
+                const infoData = await infoResponse.json();
+                
+                if (infoData.success) {
+                    const info = infoData.info;
+                    const memory = info.memory || {};
+                    const storage = info.storage || {};
+                    const primaryStorage = storage.primary || {};
+                    
+                    deviceInfo.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <div><strong>Modelo:</strong> ${info.model || 'N/A'}</div>
+                            <div><strong>Versión:</strong> ${info.version || 'N/A'}</div>
+                            <div><strong>SO:</strong> ${info.os_name || 'N/A'} ${info.os_version || ''}</div>
+                            <div><strong>IP:</strong> ${info.ip_address || 'N/A'}</div>
+                            <div><strong>Batería:</strong> ${info.battery || 'N/A'}</div>
+                            <div><strong>RAM:</strong> ${memory.total || 'N/A'} (${memory.used || 'N/A'} usados)</div>
+                            <div><strong>Almacenamiento:</strong> ${primaryStorage.size || 'N/A'} (${primaryStorage.used || 'N/A'} usados)</div>
+                            <div><strong>Serial:</strong> ${info.serial || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+            } else {
+                statusIndicator.className = 'status-disconnected';
+                statusText.textContent = UBTOOL_I18N[currentLanguage]['status.disconnected'];
+                deviceInfo.innerHTML = `<p style="color: #f44336;">${data.error || 'No se puede conectar al dispositivo'}</p>`;
+            }
+        } catch (error) {
+            console.error('Error checking device:', error);
+            document.getElementById('status-text').textContent = 'Error';
         }
-        
-        .logo {
-            width: clamp(40px, 8vw, 64px);
-            height: clamp(40px, 8vw, 64px);
-            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
-        }
-        
-        .logo-text {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .logo-title {
-            font-size: clamp(1.5rem, 4vw, 2.5rem);
-            font-weight: bold;
-            margin: 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .logo-subtitle {
-            font-size: clamp(0.8rem, 2vw, 1rem);
-            opacity: 0.9;
-            margin: 0;
-        }
-        
-        /* Hero Section */
-        .hero-section {
-            background: linear-gradient(135deg, var(--ub-dark) 0%, #2a2522 50%, #1a1614 100%);
-            min-height: 60vh;
-            display: flex;
-            align-items: center;
-            padding: 4rem 0;
-            position: relative;
-        }
-        
-        .hero-section::before {
-            content: '';
-            position: absolute;
+    }
+
+    // Global functions for modals and tools
+    function openTerminal() {
+        createRealTerminalModal();
+    }
+
+    function openFileManager() {
+        const modal = document.createElement('div');
+        modal.id = 'file-manager-modal';
+        modal.style.cssText = `
+            position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="%23E95420" opacity="0.1"/></svg>');
-            background-size: 100px 100px;
-            opacity: 0.3;
-        }
-        
-        .hero-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        /* Device Cards */
-        .device-card {
-            background: rgba(49, 45, 42, 0.95);
-            border: 2px solid var(--ub-orange);
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            padding: 1.5rem;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
             width: 100%;
-            max-width: 420px;
-        }
-        
-        .device-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(233, 84, 32, 0.4);
-            border-color: #FF6B35;
-        }
-        
-        .device-card h3 {
-            color: var(--ub-orange);
-            font-size: clamp(1.1rem, 3vw, 1.3rem);
-            margin-bottom: 1rem;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .device-card p {
-            flex-grow: 1;
-            font-size: clamp(0.9rem, 2vw, 1rem);
-            line-height: 1.6;
-        }
-        
-        /* Status Indicator */
-        .status-indicator {
-            width: clamp(10px, 2vw, 12px);
-            height: clamp(10px, 2vw, 12px);
-            border-radius: 50%;
-            display: inline-block;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
-        }
-        
-        .status-connected { background-color: #4CAF50; }
-        .status-disconnected { background-color: #f44336; }
-        .status-connecting { background-color: var(--ub-warning); }
-        
-        /* Buttons */
-        .btn-ub {
-            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
-            color: var(--ub-light);
-            border: none;
-            padding: clamp(0.75rem, 2vw, 1rem) clamp(1.5rem, 3vw, 2rem);
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: clamp(0.8rem, 2vw, 0.9rem);
-            box-shadow: 0 4px 15px rgba(233, 84, 32, 0.3);
-        }
-        
-        .btn-ub:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(233, 84, 32, 0.5);
-        }
-        
-        .btn-ub:active {
-            transform: translateY(0);
-        }
-        
-        /* Features Section */
-        .features-section {
-            padding: 4rem 0;
-            background: linear-gradient(180deg, var(--ub-dark) 0%, #2a2522 100%);
-        }
-        
-        .feature-card {
-            background: rgba(49, 45, 42, 0.8);
-            border: 1px solid var(--ub-gray);
-            border-radius: 12px;
-            padding: 2rem;
-            height: 100%;
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            border-color: var(--ub-orange);
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(233, 84, 32, 0.2);
-        }
-        
-        .feature-icon {
-            font-size: clamp(2rem, 4vw, 3rem);
-            margin-bottom: 1rem;
-        }
-        
-        /* Footer */
-        footer {
-            background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
-            padding: 2rem 0;
-            text-align: center;
-        }
-        
-        /* Responsive Grid */
-        .responsive-grid {
-            display: grid;
-            gap: 2rem;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             justify-content: center;
-            justify-items: center;
-        }
-        
-        /* Mobile Menu */
-        .mobile-menu {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
             z-index: 1000;
-            background: var(--ub-orange);
-            border: none;
-            padding: 0.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        
-        /* Responsive Breakpoints */
-        @media (max-width: 768px) {
-            .hero-section {
-                min-height: 50vh;
-                padding: 2rem 0;
-            }
-            
-            .device-card {
-                margin-bottom: 1.5rem;
-            }
-            
-            .btn-ub {
-                width: 100%;
-                margin-bottom: 0.5rem;
-            }
-            
-            .mobile-menu {
-                display: block;
-            }
-            
-            .responsive-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .header-container {
-                padding: 0.75rem 0;
-            }
-            
-            .logo-container {
-                gap: 0.5rem;
-            }
-            
-            .hero-section {
-                padding: 1rem 0;
-            }
-            
-            .device-card {
-                padding: 1rem;
-            }
-        }
-        
-        /* Loading Animation */
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: var(--ub-light);
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Utility Classes */
-        .text-center { text-align: center; }
-        .mt-2 { margin-top: 2rem; }
-        .mb-2 { margin-bottom: 2rem; }
-        .w-full { width: 100%; }
-    </style>
-</head>
-<body>
-    <!-- Header -->
-    <header class="header-container">
-        <div class="w3-content">
-            <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                <div class="logo-container">
-                    <img src="/static/logo.png" alt="Ubuntu Touch Logo" class="logo">
-                    <div class="logo-text">
-                        <h1 class="logo-title">UBTool</h1>
-                        <p class="logo-subtitle" data-i18n="header.subtitle">Ubuntu Touch Connection Tool</p>
-                    </div>
-                </div>
+        `;
 
-                <button id="lang-toggle" class="btn-ub" style="padding: 0.5rem 0.75rem;">EN</button>
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden;">
+                <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">📁 File Manager</h3>
+                    <button onclick="closeFileManager()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                <div style="display:flex; gap: 0.5rem; align-items:center; margin-bottom: 0.75rem;">
+                    <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoUp()">⬆️</button>
+                    <input id="fm-path" type="text" style="flex:1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.6rem; border-radius: 6px;" />
+                    <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoToPath()">Ir</button>
+                </div>
+                <div id="fm-status" style="margin-bottom: 0.5rem; opacity: 0.9;"></div>
+                <div id="fm-list" style="background: rgba(0,0,0,0.35); border: 1px solid var(--ub-gray); border-radius: 8px; padding: 0.5rem; height: 60vh; overflow-y: auto; font-family: 'Ubuntu', 'Arial', sans-serif;"></div>
             </div>
-        </div>
-    </header>
+        `;
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="w3-content">
-            <div class="hero-content text-center">
-                <h2 class="hero-title w3-text-orange">
-                    <span data-i18n="hero.title">Conecta tu dispositivo Ubuntu Touch</span>
-                </h2>
-                <p class="hero-subtitle">
-                    <span data-i18n="hero.subtitle">Herramienta web para gestionar la conexión ADB con tu dispositivo Ubuntu Touch</span>
-                </p>
-                
-                <div class="responsive-grid mt-2 mb-2">
-                    <div class="device-card">
-                        <h3>
-                            <span class="status-indicator status-disconnected"></span>
-                            <span data-i18n="device.status.title">Estado del Dispositivo</span>
-                        </h3>
-                        <p id="device-status">No conectado</p>
-                        <button class="btn-ub w-full" onclick="checkDevice()">
-                            <span data-i18n="device.status.check">Verificar Conexión</span>
-                        </button>
-                    </div>
-                    
-                    <div class="device-card">
-                        <h3 class="w3-text-orange" data-i18n="device.info.title">Información del Sistema</h3>
-                        <p id="device-info">Esperando conexión...</p>
-                        <button class="btn-ub w-full" onclick="getDeviceInfo()">
-                            <span data-i18n="device.info.get">Obtener Info</span>
-                        </button>
-                    </div>
-                    
-                    <div class="device-card">
-                        <h3 class="w3-text-orange" data-i18n="tools.title">Herramientas Rápidas</h3>
-                        <p data-i18n="tools.subtitle">Acceso rápido a funciones ADB</p>
-                        <div class="mt-2">
-                            <button class="btn-ub w-full" onclick="shellAccess()">
-                                <span data-i18n="tools.shell">🖥️ Shell</span>
-                            </button>
-                            <button class="btn-ub w-full mt-2" onclick="rebootDevice()">
-                                <span data-i18n="tools.reboot">🔄 Reiniciar</span>
-                            </button>
-                        </div>
-                    </div>
+        document.body.appendChild(modal);
+        document.getElementById('fm-path').value = fmCurrentPath;
+        loadFileManagerPath(fmCurrentPath);
+    }
 
-                    <div class="device-card">
-                        <h3 class="w3-text-orange" data-i18n="webapps.title">Apps Web</h3>
-                        <div id="dev-env-status" style="text-align: left; margin-bottom: 1rem;">Listo para preparar entorno…</div>
-                        <button class="btn-ub w-full" onclick="prepareDevEnv()">
-                            <span data-i18n="webapps.prepare">Preparar entorno (pip/virtualenv)</span>
-                        </button>
-                        <div class="mt-2" style="text-align: left;">
-                            <label style="display:block; margin-bottom: 0.25rem;" data-i18n="webapps.name">Nombre:</label>
-                            <input id="webapp-name" class="w3-input w3-border w3-round" placeholder="mi_app" data-i18n-placeholder="webapps.name_ph" />
-                            <label style="display:block; margin: 0.75rem 0 0.25rem;" data-i18n="webapps.framework">Framework:</label>
-                            <select id="webapp-framework" class="w3-select w3-border w3-round">
-                                <option value="microdot" selected>Microdot (recomendado)</option>
-                                <option value="flask">Flask</option>
-                                <option value="fastapi">FastAPI</option>
-                            </select>
-                            <button class="btn-ub w-full mt-2" onclick="createWebApp()">
-                                <span data-i18n="webapps.create">Crear WebApp</span>
-                            </button>
-                            <div id="webapp-create-status" style="margin-top: 0.75rem;"></div>
-                        </div>
-                    </div>
+    // File Manager Variables and Functions
+    let fmCurrentPath = '/home/phablet';
 
-                    <div class="device-card">
-                        <h3 class="w3-text-orange" data-i18n="files.title">📁 File Manager</h3>
-                        <p data-i18n="files.subtitle">Explora archivos del dispositivo</p>
-                        <button class="btn-ub w-full" onclick="openFileManager()">
-                            <span data-i18n="files.open">Abrir</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    function closeFileManager() {
+        const modal = document.getElementById('file-manager-modal');
+        if (modal) modal.remove();
+    }
 
-    <!-- Features Section -->
-    <section class="features-section">
-        <div class="w3-content">
-            <h2 class="text-center hero-title w3-text-orange mb-2" data-i18n="features.title">Características</h2>
-            
-            <div class="responsive-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🔗</div>
-                    <h3 class="w3-text-orange" data-i18n="features.adb.title">Conexión ADB</h3>
-                    <p data-i18n="features.adb.desc">Conecta y gestiona dispositivos Ubuntu Touch vía ADB con interfaz web moderna</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📱</div>
-                    <h3 class="w3-text-orange" data-i18n="features.devices.title">Gestión de Dispositivos</h3>
-                    <p data-i18n="features.devices.desc">Visualiza y controla múltiples dispositivos conectados simultáneamente</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3 class="w3-text-orange" data-i18n="features.web.title">Interfaz Web</h3>
-                    <p data-i18n="features.web.desc">Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🖥️</div>
-                    <h3 class="w3-text-orange" data-i18n="features.terminal.title">Terminal Integrada</h3>
-                    <p data-i18n="features.terminal.desc">Ejecuta comandos ADB directamente desde la interfaz web</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3 class="w3-text-orange" data-i18n="features.details.title">Información Detallada</h3>
-                    <p data-i18n="features.details.desc">Obtén información completa del dispositivo: batería, almacenamiento, red y más</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🚀</div>
-                    <h3 class="w3-text-orange" data-i18n="features.auto.title">Autoinstalable</h3>
-                    <p data-i18n="features.auto.desc">Instalación automática en Linux y Windows con configuración del entorno</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="w3-content">
-            <p>&copy; <span id="footer-year"></span> UBTool - Ubuntu Touch Connection Tool</p>
-            <p class="mt-2" style="opacity: 0.8; font-size: 0.9rem;">
-                <span data-i18n="footer.made_with">Desarrollado con ❤️ para la comunidad Ubuntu Touch</span>
-            </p>
-            <div class="mt-2">
-                <a href="https://buymeacoffee.com/lukasgaleano" target="_blank" rel="noopener" title="Buy Me a Coffee" style="display:inline-block;">
-                    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 42px; width: auto; border-radius: 8px;" />
-                </a>
-                <div style="margin-top: 0.5rem; opacity: 0.85; font-size: 0.9rem;">
-                    <span data-i18n="footer.support">Apoya el proyecto</span>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <script>
-        const UBTOOL_I18N = {
-            es: {
-                'header.subtitle': 'Ubuntu Touch Connection Tool',
-                'hero.title': 'Conecta tu dispositivo Ubuntu Touch',
-                'hero.subtitle': 'Herramienta web para gestionar la conexión ADB con tu dispositivo Ubuntu Touch',
-                'device.status.title': 'Estado del Dispositivo',
-                'device.status.check': 'Verificar Conexión',
-                'device.info.title': 'Información del Sistema',
-                'device.info.get': 'Obtener Info',
-                'tools.title': 'Herramientas Rápidas',
-                'tools.subtitle': 'Acceso rápido a funciones ADB',
-                'tools.shell': '🖥️ Shell',
-                'tools.reboot': '🔄 Reiniciar',
-                'webapps.title': 'Apps Web',
-                'webapps.prepare': 'Preparar entorno global (pip/virtualenv)',
-                'webapps.name': 'Nombre:',
-                'webapps.name_ph': 'mi_app',
-                'webapps.framework': 'Framework:',
-                'webapps.create': 'Crear WebApp',
-                'files.title': '📁 File Manager',
-                'files.subtitle': 'Explora archivos del dispositivo',
-                'files.open': 'Abrir',
-                'features.title': 'Características',
-                'features.adb.title': 'Conexión ADB',
-                'features.adb.desc': 'Conecta y gestiona dispositivos Ubuntu Touch vía ADB con interfaz web moderna',
-                'features.devices.title': 'Gestión de Dispositivos',
-                'features.devices.desc': 'Visualiza y controla múltiples dispositivos conectados simultáneamente',
-                'features.web.title': 'Interfaz Web',
-                'features.web.desc': 'Accede desde cualquier navegador moderno con diseño responsive y temas Ubuntu Touch',
-                'features.terminal.title': 'Terminal Integrada',
-                'features.terminal.desc': 'Ejecuta comandos ADB directamente desde la interfaz web',
-                'features.details.title': 'Información Detallada',
-                'features.details.desc': 'Obtén información completa del dispositivo: batería, almacenamiento, red y más',
-                'features.auto.title': 'Autoinstalable',
-                'features.auto.desc': 'Instalación automática en Linux y Windows con configuración del entorno',
-                'footer.made_with': 'Desarrollado con ❤️ para la comunidad Ubuntu Touch',
-                'footer.support': 'Apoya el proyecto'
-            },
-            en: {
-                'header.subtitle': 'Ubuntu Touch Connection Tool',
-                'hero.title': 'Connect your Ubuntu Touch device',
-                'hero.subtitle': 'Web tool to manage the ADB connection to your Ubuntu Touch device',
-                'device.status.title': 'Device Status',
-                'device.status.check': 'Check Connection',
-                'device.info.title': 'System Information',
-                'device.info.get': 'Get Info',
-                'tools.title': 'Quick Tools',
-                'tools.subtitle': 'Quick access to ADB features',
-                'tools.shell': '🖥️ Shell',
-                'tools.reboot': '🔄 Reboot',
-                'webapps.title': 'Web Apps',
-                'webapps.prepare': 'Prepare global environment (pip/virtualenv)',
-                'webapps.name': 'Name:',
-                'webapps.name_ph': 'my_app',
-                'webapps.framework': 'Framework:',
-                'webapps.create': 'Create WebApp',
-                'files.title': '📁 File Manager',
-                'files.subtitle': 'Browse device files',
-                'files.open': 'Open',
-                'features.title': 'Features',
-                'features.adb.title': 'ADB Connection',
-                'features.adb.desc': 'Connect and manage Ubuntu Touch devices via ADB with a modern web UI',
-                'features.devices.title': 'Device Management',
-                'features.devices.desc': 'View and control multiple connected devices simultaneously',
-                'features.web.title': 'Web Interface',
-                'features.web.desc': 'Access from any modern browser with responsive design and Ubuntu Touch styling',
-                'features.terminal.title': 'Integrated Terminal',
-                'features.terminal.desc': 'Run ADB commands directly from the web interface',
-                'features.details.title': 'Detailed Information',
-                'features.details.desc': 'Get full device info: battery, storage, network and more',
-                'features.auto.title': 'Auto-install',
-                'features.auto.desc': 'Automatic installation on Linux and Windows with environment setup',
-                'footer.made_with': 'Made with ❤️ for the Ubuntu Touch community',
-                'footer.support': 'Support the project'
-            }
-        };
-
-        function getCurrentLanguage() {
-            const saved = localStorage.getItem('ubtool_lang');
-            return (saved === 'en' || saved === 'es') ? saved : 'es';
+    function fmGoUp() {
+        if (!fmCurrentPath || fmCurrentPath === '/') {
+            loadFileManagerPath('/');
+            return;
         }
+        const parent = fmCurrentPath.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/';
+        loadFileManagerPath(parent);
+    }
 
-        function applyTranslations(lang) {
-            const dict = UBTOOL_I18N[lang] || UBTOOL_I18N.es;
-            document.documentElement.lang = lang;
+    function fmGoToPath() {
+        const p = (document.getElementById('fm-path').value || '').trim();
+        if (!p) return;
+        loadFileManagerPath(p);
+    }
 
-            document.querySelectorAll('[data-i18n]').forEach((el) => {
-                const key = el.getAttribute('data-i18n');
-                if (key && dict[key] !== undefined) {
-                    el.textContent = dict[key];
-                }
-            });
+    async function loadFileManagerPath(path) {
+        const status = document.getElementById('fm-status');
+        const list = document.getElementById('fm-list');
+        const pathInput = document.getElementById('fm-path');
+        if (!status || !list || !pathInput) return;
 
-            document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-                const key = el.getAttribute('data-i18n-placeholder');
-                if (key && dict[key] !== undefined) {
-                    el.setAttribute('placeholder', dict[key]);
-                }
-            });
+        status.innerHTML = '<span class="loading-spinner"></span> Cargando...';
+        list.innerHTML = '';
 
-            const btn = document.getElementById('lang-toggle');
-            if (btn) btn.textContent = (lang === 'es') ? 'EN' : 'ES';
-        }
+        try {
+            const url = `/api/files/list?path=${encodeURIComponent(path)}`;
+            const response = await fetch(url);
+            const data = await response.json();
 
-        function toggleLanguage() {
-            const next = getCurrentLanguage() === 'es' ? 'en' : 'es';
-            localStorage.setItem('ubtool_lang', next);
-            applyTranslations(next);
-        }
-
-        // Funciones JavaScript para interactuar con la API
-        async function checkDevice() {
-            const statusElement = document.getElementById('device-status');
-            const statusIndicator = document.querySelector('.status-indicator');
-            
-            // Show loading
-            statusElement.innerHTML = '<span class="loading-spinner"></span> Verificando...';
-            statusIndicator.className = 'status-indicator status-connecting';
-            
-            try {
-                const response = await fetch('/api/device/status');
-                const data = await response.json();
-                
-                if (data.connected) {
-                    statusElement.textContent = `Conectado - ${data.device || 'Dispositivo'}`;
-                    statusIndicator.className = 'status-indicator status-connected';
-                } else {
-                    statusElement.textContent = 'No conectado';
-                    statusIndicator.className = 'status-indicator status-disconnected';
-                }
-            } catch (error) {
-                console.error('Error checking device:', error);
-                statusElement.textContent = 'Error al verificar';
-                statusIndicator.className = 'status-indicator status-disconnected';
-            }
-        }
-        
-        async function getDeviceInfo() {
-            const infoElement = document.getElementById('device-info');
-            
-            // Show loading
-            infoElement.innerHTML = '<span class="loading-spinner"></span> Obteniendo información...';
-            
-            try {
-                const response = await fetch('/api/device/info');
-                const data = await response.json();
-                
-                if (data.info) {
-                    const mem = data.info.memory;
-                    const storage = data.info.storage;
-                    const storagePrimary = storage && storage.primary ? storage.primary : null;
-
-                    infoElement.innerHTML = `
-                        <div style="text-align: left;">
-                            <strong>📛 Nombre:</strong> ${data.info.device_name || data.info.device || 'N/A'}<br>
-                            <strong>🏷️ Marca:</strong> ${data.info.brand || 'N/A'}<br>
-                            <strong>📱 Modelo:</strong> ${data.info.model || 'N/A'}<br>
-                            <strong>🔄 Versión:</strong> ${data.info.version || 'N/A'}<br>
-                            <strong>🔢 Serial:</strong> ${data.info.serial || 'N/A'}<br>
-                            <strong>🏭 Fabricante:</strong> ${data.info.manufacturer || 'N/A'}<br>
-                            <strong>🔋 Batería:</strong> ${data.info.battery || 'N/A'}<br>
-                            <strong>🧠 RAM:</strong> ${mem ? `${mem.used || 'N/A'} / ${mem.total || 'N/A'} (disp: ${mem.available || 'N/A'})` : 'N/A'}<br>
-                            <strong>💾 Almacenamiento:</strong> ${storagePrimary ? `${storagePrimary.used || 'N/A'} / ${storagePrimary.size || 'N/A'} (libre: ${storagePrimary.avail || 'N/A'}, ${storagePrimary.use_percent || 'N/A'})` : 'N/A'}
-                        </div>
-                    `;
-                } else {
-                    infoElement.textContent = 'No hay información disponible';
-                }
-            } catch (error) {
-                console.error('Error getting device info:', error);
-                infoElement.textContent = 'Error al obtener información';
-            }
-        }
-
-        async function prepareDevEnv() {
-            const status = document.getElementById('dev-env-status');
-            status.innerHTML = '<span class="loading-spinner"></span> Preparando entorno...';
-            try {
-                const response = await fetch('/api/devtools/prepare_env', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-                const data = await response.json();
-                if (data.success) {
-                    const d = data.details || {};
-                    const py = d.python && d.python.version ? d.python.version : 'OK';
-                    const pip = d.pip && d.pip.version ? d.pip.version : 'OK';
-                    const venv = d.virtualenv && d.virtualenv.available ? 'OK' : 'N/A';
-                    status.innerHTML = `<div style="text-align:left;">✅ Entorno listo<br><strong>Python:</strong> ${py}<br><strong>pip:</strong> ${pip}<br><strong>virtualenv:</strong> ${venv}</div>`;
-                    // Actualizar estado del venv después de preparar
-                    setTimeout(checkVenvStatus, 1000);
-                } else {
-                    status.innerHTML = `❌ ${data.error || 'Error al preparar entorno'}`;
-                }
-            } catch (e) {
-                status.innerHTML = `❌ Error: ${e.message}`;
-            }
-        }
-
-        async function createWebApp() {
-            const name = (document.getElementById('webapp-name').value || '').trim();
-            const framework = document.getElementById('webapp-framework').value;
-            const out = document.getElementById('webapp-create-status');
-
-            if (!name) {
-                out.textContent = 'Ingresa un nombre para la app.';
+            if (!data.success) {
+                status.innerHTML = `❌ ${data.error || 'Error al listar'}`;
                 return;
             }
 
-            out.innerHTML = '<span class="loading-spinner"></span> Creando entorno...';
-            try {
-                const response = await fetch('/api/devtools/create_env', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app_name: name, framework })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    out.innerHTML = `✅ ${data.message || 'App creada'}<br><small>${data.app_path || ''}</small>`;
-                } else {
-                    out.innerHTML = `❌ ${data.error || 'Error al crear app'}${data.details ? `<br><small>${String(data.details)}</small>` : ''}`;
-                }
-            } catch (e) {
-                out.innerHTML = `❌ Error: ${e.message}`;
-            }
-        }
+            const payload = data.data;
+            fmCurrentPath = payload.path || path;
+            pathInput.value = fmCurrentPath;
+            status.textContent = fmCurrentPath;
 
-        let fmCurrentPath = '/home/phablet';
-
-        function openFileManager() {
-            const modal = document.createElement('div');
-            modal.id = 'file-manager-modal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            `;
-
-            modal.innerHTML = `
-                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden;">
-                    <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <h3 style="color: var(--ub-orange); margin: 0;">📁 File Manager</h3>
-                        <button onclick="closeFileManager()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
-                    </div>
-                    <div style="display:flex; gap: 0.5rem; align-items:center; margin-bottom: 0.75rem;">
-                        <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoUp()">⬆️</button>
-                        <input id="fm-path" type="text" style="flex:1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.6rem; border-radius: 6px;" />
-                        <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoToPath()">Ir</button>
-                    </div>
-                    <div id="fm-status" style="margin-bottom: 0.5rem; opacity: 0.9;"></div>
-                    <div id="fm-list" style="background: rgba(0,0,0,0.35); border: 1px solid var(--ub-gray); border-radius: 8px; padding: 0.5rem; height: 60vh; overflow-y: auto; font-family: 'Ubuntu', 'Arial', sans-serif;"></div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-            document.getElementById('fm-path').value = fmCurrentPath;
-            loadFileManagerPath(fmCurrentPath);
-        }
-
-        function closeFileManager() {
-            const modal = document.getElementById('file-manager-modal');
-            if (modal) modal.remove();
-        }
-
-        function fmGoUp() {
-            if (!fmCurrentPath || fmCurrentPath === '/') {
-                loadFileManagerPath('/');
+            const entries = payload.entries || [];
+            if (!entries.length) {
+                list.innerHTML = '<div style="opacity:0.8; padding: 0.5rem;">(vacío)</div>';
                 return;
             }
-            const parent = fmCurrentPath.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/';
-            loadFileManagerPath(parent);
-        }
 
-        function fmGoToPath() {
-            const p = (document.getElementById('fm-path').value || '').trim();
-            if (!p) return;
-            loadFileManagerPath(p);
-        }
-
-        async function loadFileManagerPath(path) {
-            const status = document.getElementById('fm-status');
-            const list = document.getElementById('fm-list');
-            const pathInput = document.getElementById('fm-path');
-            if (!status || !list || !pathInput) return;
-
-            status.innerHTML = '<span class="loading-spinner"></span> Cargando...';
-            list.innerHTML = '';
-
-            try {
-                const url = `/api/files/list?path=${encodeURIComponent(path)}`;
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (!data.success) {
-                    status.innerHTML = `❌ ${data.error || 'Error al listar'}`;
-                    return;
-                }
-
-                const payload = data.data;
-                fmCurrentPath = payload.path || path;
-                pathInput.value = fmCurrentPath;
-                status.textContent = fmCurrentPath;
-
-                const entries = payload.entries || [];
-                if (!entries.length) {
-                    list.innerHTML = '<div style="opacity:0.8; padding: 0.5rem;">(vacío)</div>';
-                    return;
-                }
-
-                let html = '';
-                for (const e of entries) {
-                    const name = e.name || '';
-                    const isDir = !!e.is_dir;
-                    const size = e.size_human || '';
-                    const rowStyle = 'display:flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; cursor: pointer;';
-                    const left = isDir ? `📁 ${name}` : `📄 ${name}`;
-                    html += `
-                        <div style="${rowStyle}" onmouseover="this.style.background='rgba(233,84,32,0.10)'" onmouseout="this.style.background='transparent'" onclick="fmEntryClick(${isDir ? 'true' : 'false'}, '${encodeURIComponent(name)}')">
-                            <div style="overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">${left}</div>
-                            <div style="opacity:0.8; white-space: nowrap;">${isDir ? '' : size}</div>
-                        </div>
-                    `;
-                }
-                list.innerHTML = html;
-            } catch (e) {
-                status.innerHTML = `❌ Error: ${e.message}`;
+            let html = '';
+            for (const e of entries) {
+                const name = e.name || '';
+                const isDir = !!e.is_dir;
+                const size = e.size_human || '';
+                const rowStyle = 'display:flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; cursor: pointer;';
+                const left = isDir ? `📁 ${name}` : `📄 ${name}`;
+                html += `
+                    <div style="${rowStyle}" onmouseover="this.style.background='rgba(233,84,32,0.10)'" onmouseout="this.style.background='transparent'" onclick="fmEntryClick(${isDir ? 'true' : 'false'}, '${encodeURIComponent(name)}')">
+                        <div style="overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">${left}</div>
+                        <div style="opacity:0.8; white-space: nowrap;">${isDir ? '' : size}</div>
+                    </div>
+                `;
             }
+            list.innerHTML = html;
+        } catch (e) {
+            status.innerHTML = `❌ Error: ${e.message}`;
         }
+    }
 
-        function fmEntryClick(isDir, encodedName) {
-            const name = decodeURIComponent(encodedName || '');
-            if (!name) return;
-            if (isDir) {
-                const base = (fmCurrentPath || '/').replace(/\/+$/, '');
-                const next = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
-                loadFileManagerPath(next);
-            } else {
-                const base = (fmCurrentPath || '/').replace(/\/+$/, '');
-                const fullPath = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
-                openFile(fullPath);
+    function fmEntryClick(isDir, encodedName) {
+        const name = decodeURIComponent(encodedName || '');
+        if (!name) return;
+        if (isDir) {
+            const base = (fmCurrentPath || '/').replace(/\/+$/, '');
+            const next = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
+            loadFileManagerPath(next);
+        } else {
+            const base = (fmCurrentPath || '/').replace(/\/+$/, '');
+            const fullPath = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
+            openFile(fullPath);
+        }
+    }
+
+    function closeFileViewer() {
+        const modal = document.getElementById('file-viewer-modal');
+        if (modal) modal.remove();
+    }
+
+    async function openFile(path) {
+        try {
+            const res = await fetch(`/api/files/text?path=${encodeURIComponent(path)}`);
+            const data = await res.json();
+            if (data.success) {
+                openTextEditor(path, data.content || '', data.mime || 'text/plain');
+                return;
             }
+        } catch (e) {
+            // Fall back to viewer
         }
 
-        function closeFileViewer() {
-            const modal = document.getElementById('file-viewer-modal');
-            if (modal) modal.remove();
+        openBinaryViewer(path);
+    }
+
+    function openBinaryViewer(path) {
+        const modal = document.createElement('div');
+        modal.id = 'file-viewer-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        `;
+
+        const url = `/api/files/raw?path=${encodeURIComponent(path)}`;
+        const ext = (path.split('.').pop() || '').toLowerCase();
+        const isImage = ['png','jpg','jpeg','gif','bmp','webp','svg'].includes(ext);
+        const isVideo = ['mp4','webm','ogg','mov','mkv','avi','3gp'].includes(ext);
+
+        let body = '';
+        if (isImage) {
+            body = `<img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;" />`;
+        } else if (isVideo) {
+            body = `<video src="${url}" controls style="max-width: 100%; max-height: 70vh; border-radius: 8px;"></video>`;
+        } else {
+            body = `<div style="opacity:0.9; margin-bottom: 1rem;">Archivo: <code>${path}</code></div>
+                    <a class="btn-ub" href="${url}" target="_blank" rel="noopener">Abrir/Descargar</a>`;
         }
 
-        async function openFile(path) {
-            try {
-                const res = await fetch(`/api/files/text?path=${encodeURIComponent(path)}`);
-                const data = await res.json();
-                if (data.success) {
-                    openTextEditor(path, data.content || '', data.mime || 'text/plain');
-                    return;
-                }
-            } catch (e) {
-                // Fall back to viewer
-            }
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: auto;">
+                <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">👁️ Viewer</h3>
+                    <button onclick="closeFileViewer()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                ${body}
+            </div>
+        `;
 
-            openBinaryViewer(path);
-        }
+        document.body.appendChild(modal);
+    }
 
-        function openBinaryViewer(path) {
-            const modal = document.createElement('div');
-            modal.id = 'file-viewer-modal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1100;
-            `;
+    function openTextEditor(path, content, mime) {
+        const modal = document.createElement('div');
+        modal.id = 'file-viewer-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        `;
 
-            const url = `/api/files/raw?path=${encodeURIComponent(path)}`;
-            const ext = (path.split('.').pop() || '').toLowerCase();
-            const isImage = ['png','jpg','jpeg','gif','bmp','webp','svg'].includes(ext);
-            const isVideo = ['mp4','webm','ogg','mov','mkv','avi','3gp'].includes(ext);
-
-            let body = '';
-            if (isImage) {
-                body = `<img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;" />`;
-            } else if (isVideo) {
-                body = `<video src="${url}" controls style="max-width: 100%; max-height: 70vh; border-radius: 8px;"></video>`;
-            } else {
-                body = `<div style="opacity:0.9; margin-bottom: 1rem;">Archivo: <code>${path}</code></div>
-                        <a class="btn-ub" href="${url}" target="_blank" rel="noopener">Abrir/Descargar</a>`;
-            }
-
-            modal.innerHTML = `
-                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: auto;">
-                    <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <h3 style="color: var(--ub-orange); margin: 0;">👁️ Viewer</h3>
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">📝 Editor: ${path}</h3>
+                    <div style="display:flex; gap: 0.5rem;">
+                        <button onclick="saveTextEditor('${path}')" class="btn-ub" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">💾 Guardar</button>
                         <button onclick="closeFileViewer()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
                     </div>
-                    ${body}
                 </div>
-            `;
+                <textarea id="text-editor-content" style="flex:1; background: rgba(255,255,255,0.05); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 14px; resize: none; overflow-y: auto; white-space: pre; tab-size: 4;">${content}</textarea>
+            </div>
+        `;
 
-            document.body.appendChild(modal);
-        }
-
-        function openTextEditor(path, content, mime) {
-            const modal = document.createElement('div');
-            modal.id = 'file-viewer-modal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1100;
-            `;
-
-            modal.innerHTML = `
-                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: hidden;">
-                    <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <h3 style="color: var(--ub-orange); margin: 0;">📝 Editor</h3>
-                        <button onclick="closeFileViewer()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
-                    </div>
-                    <div style="opacity:0.9; margin-bottom: 0.5rem;">${path}</div>
-                    <textarea id="file-editor-text" style="width: 100%; height: 60vh; background: rgba(0,0,0,0.35); color: var(--ub-light); border: 1px solid var(--ub-gray); border-radius: 8px; padding: 0.75rem; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;">${(content || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
-                    <div style="display:flex; gap: 0.5rem; margin-top: 0.75rem; align-items:center;">
-                        <button class="btn-ub" onclick="saveTextFile('${encodeURIComponent(path)}')">Guardar</button>
-                        <div id="file-editor-status" style="opacity:0.9;"></div>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-        }
-
-        async function saveTextFile(encodedPath) {
-            const path = decodeURIComponent(encodedPath || '');
-            const status = document.getElementById('file-editor-status');
-            const ta = document.getElementById('file-editor-text');
-            if (!path || !ta || !status) return;
-
-            status.innerHTML = '<span class="loading-spinner"></span> Guardando...';
-            try {
-                const response = await fetch('/api/files/write', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path, content: ta.value })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    status.textContent = '✅ Guardado';
-                } else {
-                    status.textContent = `❌ ${data.error || 'Error al guardar'}`;
-                }
-            } catch (e) {
-                status.textContent = `❌ ${e.message}`;
+        document.body.appendChild(modal);
+        
+        // Focus on textarea
+        setTimeout(() => {
+            const textarea = document.getElementById('text-editor-content');
+            if (textarea) {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
             }
-        }
-        
-        function shellAccess() {
-            createRealTerminalModal();
-        }
-        
-        function createRealTerminalModal() {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            `;
-            
-            modal.innerHTML = `
-                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 800px; width: 95%; max-height: 90vh; overflow: hidden;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="color: var(--ub-orange); margin: 0;">🖥️ Terminal Ubuntu Touch - Shell del Dispositivo</h3>
-                        <div style="display:flex; gap: 0.5rem; align-items:center;">
-                            <button onclick="openRootPrompt()" class="btn-ub" style="padding: 0.5rem 0.75rem;">Root</button>
-                            <button onclick="closeTerminal()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
-                        </div>
-                    </div>
-                    <div style="background: rgba(233, 84, 32, 0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
-                        <strong style="color: var(--ub-orange);">ℹ️ Conectado al shell del dispositivo Ubuntu Touch</strong><br>
-                        <span style="opacity: 0.8;">Ejecuta comandos directamente en el dispositivo. Ejemplos:</span><br>
-                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ls -la</code> • 
-                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">cd ~/Documents</code> • 
-                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ps aux</code> • 
-                        <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">getprop</code>
-                    </div>
-                    <div id="terminal-output" style="background: #000; color: #0f0; padding: 1rem; border-radius: 8px; height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin-bottom: 1rem; white-space: pre-wrap;"></div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="terminal-command" placeholder="Escribe un comando del shell del dispositivo..." style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 4px; font-family: 'Courier New', monospace;">
-                        <button onclick="sendTerminalCommand()" class="btn-ub">Enviar</button>
-                    </div>
-                    <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
-                        Estado: <span id="device-status-terminal">Verificando...</span> | 
-                        Sesión: <span id="session-id-terminal">No iniciada</span>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Initialize terminal
-            initializeTerminal();
-            
-            // Focus on input
-            setTimeout(() => {
-                document.getElementById('terminal-command').focus();
-            }, 100);
+        }, 100);
+    }
 
-            // Handle Enter key
-            document.getElementById('terminal-command').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendTerminalCommand();
-                }
+    async function saveTextEditor(path) {
+        const textarea = document.getElementById('text-editor-content');
+        if (!textarea) return;
+
+        try {
+            const response = await fetch('/api/files/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    path: path, 
+                    content: textarea.value 
+                })
             });
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('✅ Archivo guardado exitosamente');
+            } else {
+                alert(`❌ Error al guardar: ${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Error de conexión: ${error.message}`);
         }
+    }
+
+    // Terminal Functions
+    let terminalSessionId = null;
+    let terminalInterval = null;
+
+    function createRealTerminalModal() {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 800px; width: 95%; max-height: 90vh; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">🖥️ Terminal Ubuntu Touch - Shell del Dispositivo</h3>
+                    <div style="display:flex; gap: 0.5rem; align-items:center;">
+                        <button onclick="openRootPrompt()" class="btn-ub" style="padding: 0.5rem 0.75rem;">Root</button>
+                        <button onclick="closeTerminal()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                    </div>
+                </div>
+                <div style="background: rgba(233, 84, 32, 0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                    <strong>Comandos útiles:</strong> 
+                    <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ls -la</code> • 
+                    <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ps aux</code> • 
+                    <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">getprop</code>
+                </div>
+                <div id="terminal-output" style="background: #000; color: #0f0; padding: 1rem; border-radius: 8px; height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin-bottom: 1rem; white-space: pre-wrap;"></div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="terminal-command" placeholder="Escribe un comando del shell del dispositivo..." style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 4px; font-family: 'Courier New', monospace;">
+                    <button onclick="sendTerminalCommand()" class="btn-ub">Enviar</button>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+                    Estado: <span id="device-status-terminal">Verificando...</span> | 
+                    Sesión: <span id="session-id-terminal">No iniciada</span>
+                </div>
+            </div>
+        `;
         
-        let terminalSessionId = null;
-        let terminalInterval = null;
+        document.body.appendChild(modal);
         
-        async function initializeTerminal() {
-            try {
-                // Create terminal session
-                const response = await fetch('/api/terminal/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({})
-                });
+        // Initialize terminal
+        initializeTerminal();
+        
+        // Focus on input
+        setTimeout(() => {
+            document.getElementById('terminal-command').focus();
+        }, 100);
+
+        // Handle Enter key
+        document.getElementById('terminal-command').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendTerminalCommand();
+            }
+        });
+    }
+
+    async function initializeTerminal() {
+        try {
+            // Create terminal session
+            const response = await fetch('/api/terminal/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                terminalSessionId = data.session_id;
+                document.getElementById('device-status-terminal').textContent = 'Conectado al dispositivo';
+                document.getElementById('session-id-terminal').textContent = data.session_id.substring(0, 12) + '...';
                 
-                const data = await response.json();
+                // Start polling for output
+                terminalInterval = setInterval(pollTerminalOutput, 500);
                 
-                if (data.success) {
-                    terminalSessionId = data.session_id;
-                    document.getElementById('device-status-terminal').textContent = 'Conectado al dispositivo';
-                    document.getElementById('session-id-terminal').textContent = data.session_id.substring(0, 12) + '...';
-                    
-                    // Start polling for output
-                    terminalInterval = setInterval(pollTerminalOutput, 500);
-                    
-                    // Start with empty output
-                    const output = document.getElementById('terminal-output');
-                    output.textContent = '';
-                } else {
-                    document.getElementById('device-status-terminal').textContent = 'Error: ' + data.error;
-                    document.getElementById('session-id-terminal').textContent = 'N/A';
-                    document.getElementById('terminal-output').textContent = 'Error al conectar terminal: ' + data.error;
-                }
-            } catch (error) {
-                console.error('Error initializing terminal:', error);
-                document.getElementById('device-status-terminal').textContent = 'Error de conexión';
+                // Start with empty output
+                const output = document.getElementById('terminal-output');
+                output.textContent = '';
+            } else {
+                document.getElementById('device-status-terminal').textContent = 'Error: ' + data.error;
                 document.getElementById('session-id-terminal').textContent = 'N/A';
-                document.getElementById('terminal-output').textContent = 'Error al inicializar terminal';
+                document.getElementById('terminal-output').textContent = 'Error al conectar terminal: ' + data.error;
             }
+        } catch (error) {
+            console.error('Error initializing terminal:', error);
+            document.getElementById('device-status-terminal').textContent = 'Error de conexión';
+            document.getElementById('session-id-terminal').textContent = 'N/A';
+            document.getElementById('terminal-output').textContent = 'Error al inicializar terminal';
         }
-        
-        async function sendTerminalCommand() {
-            const commandInput = document.getElementById('terminal-command');
-            const output = document.getElementById('terminal-output');
-            
-            if (!commandInput || !terminalSessionId) return;
+    }
 
-            const command = commandInput.value.trim();
-            if (!command) return;
+    async function sendTerminalCommand() {
+        const commandInput = document.getElementById('terminal-command');
+        const output = document.getElementById('terminal-output');
+        
+        if (!commandInput || !terminalSessionId) return;
+
+        const command = commandInput.value.trim();
+        if (!command) return;
+        
+        // Send command to terminal (without \r\n since manager adds it)
+        try {
+            const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ input: command })
+            });
             
-            // Send command to terminal (without \r\n since manager adds it)
-            try {
-                const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ input: command })
-                });
+            const data = await response.json();
+            
+            if (!data.success) {
+                output.textContent += `Error: ${data.error}\r\n`;
+            }
+        } catch (error) {
+            output.textContent += `Error de conexión: ${error.message}\r\n`;
+        }
+
+        // Clear input and scroll to bottom
+        commandInput.value = '';
+        output.scrollTop = output.scrollHeight;
+    }
+
+    async function pollTerminalOutput() {
+        if (!terminalSessionId) return;
+        
+        try {
+            const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
+            const data = await response.json();
+            
+            if (data.success && data.output) {
+                const output = document.getElementById('terminal-output');
+                let chunk = data.output;
+
+                // Strip terminal control sequences (ANSI/OSC) that can show up as "0;user@host"
+                // OSC: ESC ] ... BEL or ESC \
+                chunk = chunk.replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '');
+                // CSI: ESC [ ... letter
+                chunk = chunk.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '');
+                // Fallback: sometimes title text leaks without the ESC prefix
+                chunk = chunk.replace(/(^|\r?\n)0;[^\r\n]*?(?=(\r?\n|$))/g, '$1');
+
+                // Simplify prompt: user@host:/path$ -> user$
+                // Also handles root@host:/path# -> root#
+                chunk = chunk.replace(/([a-zA-Z0-9_-]+)@[^\s:]+:[^\r\n$#]*([\$#])/g, '$1$2');
+
+                output.textContent += chunk;
+                output.scrollTop = output.scrollHeight;
                 
-                const data = await response.json();
-                
-                if (!data.success) {
-                    output.textContent += `Error: ${data.error}\r\n`;
+                // Update status if session became inactive
+                if (!data.active) {
+                    document.getElementById('device-status-terminal').textContent = 'Desconectado';
+                    clearInterval(terminalInterval);
+                    terminalInterval = null;
                 }
-            } catch (error) {
-                output.textContent += `Error de conexión: ${error.message}\r\n`;
             }
+        } catch (error) {
+            console.error('Error polling terminal:', error);
+        }
+    }
 
-            // Clear input and scroll to bottom
-            commandInput.value = '';
-            output.scrollTop = output.scrollHeight;
+    function closeTerminal() {
+        if (terminalInterval) {
+            clearInterval(terminalInterval);
+            terminalInterval = null;
         }
         
-        async function pollTerminalOutput() {
-            if (!terminalSessionId) return;
-            
-            try {
-                const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
-                const data = await response.json();
-                
-                if (data.success && data.output) {
-                    const output = document.getElementById('terminal-output');
-                    let chunk = data.output;
-
-                    // Strip terminal control sequences (ANSI/OSC) that can show up as "0;user@host"
-                    // OSC: ESC ] ... BEL or ESC \
-                    chunk = chunk.replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '');
-                    // CSI: ESC [ ... letter
-                    chunk = chunk.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '');
-                    // Fallback: sometimes title text leaks without the ESC prefix
-                    chunk = chunk.replace(/(^|\r?\n)0;[^\r\n]*?(?=(\r?\n|$))/g, '$1');
-
-                    // Simplify prompt: user@host:/path$ -> user$
-                    // Also handles root@host:/path# -> root#
-                    chunk = chunk.replace(/([a-zA-Z0-9_-]+)@[^\s:]+:[^\r\n$#]*([\$#])/g, '$1$2');
-
-                    output.textContent += chunk;
-                    output.scrollTop = output.scrollHeight;
-                    
-                    // Update status if session became inactive
-                    if (!data.active) {
-                        document.getElementById('device-status-terminal').textContent = 'Desconectado';
-                        clearInterval(terminalInterval);
-                        terminalInterval = null;
-                    }
-                }
-            } catch (error) {
-                console.error('Error polling terminal:', error);
-            }
+        if (terminalSessionId) {
+            // Close terminal session
+            fetch(`/api/terminal/${terminalSessionId}/close`, {
+                method: 'POST'
+            }).catch(console.error);
+            terminalSessionId = null;
         }
         
-        function closeTerminal() {
-            if (terminalInterval) {
-                clearInterval(terminalInterval);
-                terminalInterval = null;
-            }
-            
-            if (terminalSessionId) {
-                // Close terminal session
-                fetch(`/api/terminal/${terminalSessionId}/close`, {
-                    method: 'POST'
-                }).catch(console.error);
-                terminalSessionId = null;
-            }
-            
-            // Remove modal
-            const modal = document.querySelector('div[style*="position: fixed"]');
-            if (modal) {
-                modal.remove();
-            }
+        // Remove modal
+        const modal = document.querySelector('div[style*="position: fixed"]');
+        if (modal) {
+            modal.remove();
         }
+    }
 
-        function openRootPrompt() {
-            if (!terminalSessionId) return;
+    function openRootPrompt() {
+        if (!terminalSessionId) return;
 
-            const existing = document.getElementById('root-prompt-modal');
-            if (existing) existing.remove();
+        const existing = document.getElementById('root-prompt-modal');
+        if (existing) existing.remove();
 
-            const modal = document.createElement('div');
-            modal.id = 'root-prompt-modal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.75);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1200;
-            `;
+        const modal = document.createElement('div');
+        modal.id = 'root-prompt-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        `;
 
-            modal.innerHTML = `
-                <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 420px; width: 92%;">
-                    <h4 style="color: var(--ub-orange); margin: 0 0 0.75rem 0;">🔐 Iniciar como root</h4>
-                    <div style="opacity:0.85; font-size: 0.9rem; margin-bottom: 0.75rem;">
-                        Ingresa la contraseña del usuario del dispositivo para ejecutar <code>sudo</code>.
-                    </div>
-                    <input id="root-password" type="password" placeholder="Contraseña" style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px;" />
-                    <div id="root-status" style="margin-top: 0.5rem; min-height: 1.2rem; opacity: 0.9;"></div>
-                    <div style="display:flex; gap: 0.5rem; margin-top: 0.75rem;">
-                        <button class="btn-ub w-full" onclick="submitRootPassword()">Continuar</button>
-                        <button class="btn-ub w-full" onclick="closeRootPrompt()" style="background: transparent; border: 2px solid var(--ub-orange);">Cancelar</button>
-                    </div>
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%;">
+                <h3 style="color: var(--ub-orange); margin: 0 0 1rem 0;">🔐 Acceso Root</h3>
+                <p style="margin-bottom: 1rem; opacity: 0.9;">Ingresa la contraseña de usuario para elevar privilegios a root:</p>
+                <input type="password" id="root-password" placeholder="Contraseña de usuario" style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-family: inherit;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="submitRootAccess()" class="btn-ub" style="flex: 1;">Ejecutar sudo</button>
+                    <button onclick="closeRootPrompt()" class="btn-ub" style="background: #666; flex: 1;">Cancelar</button>
                 </div>
-            `;
+            </div>
+        `;
 
-            document.body.appendChild(modal);
-            setTimeout(() => {
-                const inp = document.getElementById('root-password');
-                if (inp) inp.focus();
-            }, 50);
-
-            const inp = document.getElementById('root-password');
-            if (inp) {
-                inp.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') submitRootPassword();
-                });
-            }
-        }
-
-        function closeRootPrompt() {
-            const modal = document.getElementById('root-prompt-modal');
-            if (modal) modal.remove();
-        }
-
-        async function submitRootPassword() {
-            const status = document.getElementById('root-status');
-            const inp = document.getElementById('root-password');
-            if (!terminalSessionId || !inp) return;
-
-            const password = inp.value;
-            if (!password) {
-                if (status) status.textContent = 'Ingresa la contraseña.';
-                return;
-            }
-
-            if (status) status.innerHTML = '<span class="loading-spinner"></span> Elevando...';
-
-            try {
-                // Start sudo shell (sudo will read password from stdin)
-                await fetch(`/api/terminal/${terminalSessionId}/write`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: "sudo -S -p '' -s" })
-                });
-
-                // Send password (do not echo it to output)
-                await fetch(`/api/terminal/${terminalSessionId}/write`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: password })
-                });
-
-                // Clear password ASAP
-                inp.value = '';
-
-                if (status) status.textContent = '✅ Enviado. Si la clave es correcta, el prompt cambiará a root.';
-                setTimeout(closeRootPrompt, 800);
-            } catch (e) {
-                if (status) status.textContent = `❌ ${e.message}`;
-            }
-        }
+        document.body.appendChild(modal);
         
-        function rebootDevice() {
-            if (confirm('¿Estás seguro de que quieres reiniciar el dispositivo?')) {
-                // Implement reboot functionality
-                alert('Reiniciando dispositivo - Esta función estará disponible próximamente');
+        // Focus on password input
+        setTimeout(() => {
+            document.getElementById('root-password').focus();
+        }, 100);
+    }
+
+    async function submitRootAccess() {
+        const password = document.getElementById('root-password').value;
+        if (!password) return;
+
+        try {
+            const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input: `echo '${password}' | sudo -S su` })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                closeRootPrompt();
+                // Add visual feedback
+                const output = document.getElementById('terminal-output');
+                output.textContent += '\r\n[ROOT] Elevando privilegios...\r\n';
             }
+        } catch (error) {
+            alert('Error al elevar privilegios: ' + error.message);
         }
+    }
+
+    function closeRootPrompt() {
+        const modal = document.getElementById('root-prompt-modal');
+        if (modal) modal.remove();
+    }
+
+    // Sidebar Functions
+    let sidebarTimeout;
+    let isSidebarOpen = false;
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const toggleBtn = document.getElementById('sidebar-toggle');
         
-        // Verificar estado del entorno virtual global
-        async function checkVenvStatus() {
-            try {
-                const response = await fetch('/api/devtools/venv_status');
-                const data = await response.json();
-                const statusEl = document.getElementById('dev-env-status');
-                
-                if (data.success) {
-                    if (data.status === 'ready') {
-                        statusEl.innerHTML = '<span style="color: #4CAF50;">✓ ' + data.message + '</span>';
-                    } else if (data.status === 'incomplete') {
-                        statusEl.innerHTML = '<span style="color: #FF9800;">⚠ ' + data.message + '</span>';
-                    } else {
-                        statusEl.innerHTML = '<span style="color: #2196F3;">→ ' + data.message + '</span>';
-                    }
-                } else {
-                    statusEl.innerHTML = '<span style="color: #f44336;">✗ Error: ' + data.error + '</span>';
+        if (isSidebarOpen) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            toggleBtn.classList.remove('active');
+            isSidebarOpen = false;
+            clearSidebarTimeout();
+        } else {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+            toggleBtn.classList.add('active');
+            isSidebarOpen = true;
+            startSidebarTimeout();
+        }
+    }
+
+    function startSidebarTimeout() {
+        clearSidebarTimeout();
+        sidebarTimeout = setTimeout(() => {
+            if (isSidebarOpen) {
+                toggleSidebar();
+            }
+        }, 5000); // Auto-hide after 5 seconds
+    }
+
+    function clearSidebarTimeout() {
+        if (sidebarTimeout) {
+            clearTimeout(sidebarTimeout);
+            sidebarTimeout = null;
+        }
+    }
+
+    // Reset timeout on mouse movement over sidebar
+    document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.addEventListener('mouseenter', () => {
+                if (isSidebarOpen) {
+                    clearSidebarTimeout();
                 }
-            } catch (error) {
-                const statusEl = document.getElementById('dev-env-status');
-                statusEl.innerHTML = '<span style="color: #f44336;">✗ Error al verificar estado</span>';
-            }
+            });
+            
+            sidebar.addEventListener('mouseleave', () => {
+                if (isSidebarOpen) {
+                    startSidebarTimeout();
+                }
+            });
+        }
+    });
+
+    function showDeviceInfo() {
+        // Scroll to device info section
+        const deviceSection = document.querySelector('.hero-section');
+        if (deviceSection) {
+            deviceSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        // Close sidebar after navigation
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
+    function rebootDevice() {
+        if (confirm('¿Estás seguro de que quieres reiniciar el dispositivo?')) {
+            // Implement reboot functionality
+            alert('Reiniciando dispositivo - Esta función estará disponible próximamente');
+        }
+        // Close sidebar after action
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+        const lang = getCurrentLanguage();
+        applyTranslations(lang);
+        
+        const langToggle = document.getElementById('lang-toggle');
+        if (langToggle) {
+            langToggle.addEventListener('click', toggleLanguage);
         }
         
-        // Verificar conexión al cargar la página
-        window.onload = function() {
-            const lang = getCurrentLanguage();
-            applyTranslations(lang);
-            const btn = document.getElementById('lang-toggle');
-            if (btn) btn.addEventListener('click', toggleLanguage);
-            const yearEl = document.getElementById('footer-year');
-            if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-            checkDevice();
-            checkVenvStatus();
-        };
+        const yearEl = document.getElementById('footer-year');
+        if (yearEl) {
+            yearEl.textContent = String(new Date().getFullYear());
+        }
         
-        // Auto-refresh device status every 30 seconds
-        setInterval(checkDevice, 30000);
-    </script>
-</body>
-</html>
+        checkDevice();
+    };
+    
+    // Auto-refresh device status every 30 seconds
+    setInterval(checkDevice, 30000);
+</script>
+{% endblock %}
