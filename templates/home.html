@@ -787,6 +787,82 @@
         if (modal) modal.remove();
     }
 
+    // Update Functions
+    function checkForUpdates() {
+        // Detect OS and choose appropriate script
+        const isWindows = navigator.platform.indexOf('Win') !== -1;
+        const isMac = navigator.platform.indexOf('Mac') !== -1;
+        
+        let updateCommand;
+        let updateInstructions;
+        
+        if (isWindows) {
+            updateCommand = 'update.bat';
+            updateInstructions = `
+                <div style="text-align: left; line-height: 1.6;">
+                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">🔄 Actualizar UBTool (Windows)</h4>
+                    <p><strong>Pasos para actualizar:</strong></p>
+                    <ol style="margin-left: 1.5rem;">
+                        <li>Cierra esta ventana de UBTool</li>
+                        <li>Abre una terminal o símbolo del sistema</li>
+                        <li>Navega al directorio de UBTool</li>
+                        <li>Ejecuta: <code style="background: rgba(233,84,32,0.2); padding: 2px 6px; border-radius: 3px;">update.bat</code></li>
+                        <li>Sigue las instrucciones del script</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><strong>Alternativa:</strong> Descarga manualmente desde <a href="https://github.com/lukasgaleano/UBTool/releases" target="_blank" style="color: var(--ub-orange);">GitHub Releases</a></p>
+                </div>
+            `;
+        } else {
+            updateCommand = './update.sh';
+            updateInstructions = `
+                <div style="text-align: left; line-height: 1.6;">
+                    <h4 style="color: var(--ub-orange); margin-bottom: 1rem;">🔄 Actualizar UBTool (Linux/macOS)</h4>
+                    <p><strong>Pasos para actualizar:</strong></p>
+                    <ol style="margin-left: 1.5rem;">
+                        <li>Cierra esta ventana de UBTool</li>
+                        <li>Abre una terminal</li>
+                        <li>Navega al directorio de UBTool</li>
+                        <li>Ejecuta: <code style="background: rgba(233,84,32,0.2); padding: 2px 6px; border-radius: 3px;">chmod +x update.sh && ./update.sh</code></li>
+                        <li>Sigue las instrucciones del script</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><strong>Alternativa:</strong> Descarga manualmente desde <a href="https://github.com/lukasgaleano/UBTool/releases" target="_blank" style="color: var(--ub-orange);">GitHub Releases</a></p>
+                </div>
+            `;
+        }
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: var(--ub-orange); margin: 0;">🔄 Actualizar UBTool</h3>
+                    <button onclick="this.closest('div[style*=position]').remove()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                ${updateInstructions}
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close sidebar
+        if (isSidebarOpen) {
+            toggleSidebar();
+        }
+    }
+
     // Sidebar Functions
     let sidebarTimeout;
     let isSidebarOpen = false;
