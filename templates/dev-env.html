@@ -222,6 +222,28 @@
 
 {% block scripts %}
 <script>
+// Helper function to safely parse JSON responses
+async function parseJSONResponse(response) {
+    if (!response.ok) {
+        if (response.status === 413) {
+            throw new Error('El archivo es demasiado grande. El tamaño máximo permitido es 100MB.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    if (!text) {
+        throw new Error('Empty response from server');
+    }
+    
+    try {
+        return JSON.parse(text);
+    } catch (jsonError) {
+        console.error('JSON parse error:', jsonError, 'Response text:', text);
+        throw new Error(`Invalid JSON response: ${jsonError.message}`);
+    }
+}
+
 // Check development environment status
 async function checkDevEnvStatus() {
     const statusContent = document.getElementById('env-status-content');
@@ -237,7 +259,7 @@ async function checkDevEnvStatus() {
     
     try {
         const response = await fetch('/api/devtools/venv_status');
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             statusIndicator.className = 'status-indicator status-ready';
@@ -293,7 +315,7 @@ async function loadInstalledPackages() {
     
     try {
         const response = await fetch('/api/devtools/list_packages');
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success && data.packages && data.packages.length > 0) {
             const packagesList = data.packages.map(pkg => `
@@ -339,7 +361,7 @@ async function checkDevTools() {
     
     try {
         const response = await fetch('/api/devtools/check');
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             const tools = data.tools || {};
@@ -387,7 +409,7 @@ async function prepareDevEnvironment() {
             headers: { 'Content-Type': 'application/json' }
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             showNotification('✅ Entorno preparado exitosamente', 'success');
@@ -429,7 +451,7 @@ async function confirmInstallPackage() {
             body: JSON.stringify({ package_name: packageName })
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             showNotification(`✅ Paquete "${packageName}" instalado exitosamente`, 'success');

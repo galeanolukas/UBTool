@@ -472,6 +472,28 @@
     </footer>
 
     <script>
+        // Helper function to safely parse JSON responses
+        async function parseJSONResponse(response) {
+            if (!response.ok) {
+                if (response.status === 413) {
+                    throw new Error('El archivo es demasiado grande. El tamaño máximo permitido es 100MB.');
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const text = await response.text();
+            if (!text) {
+                throw new Error('Empty response from server');
+            }
+            
+            try {
+                return JSON.parse(text);
+            } catch (jsonError) {
+                console.error('JSON parse error:', jsonError, 'Response text:', text);
+                throw new Error(`Invalid JSON response: ${jsonError.message}`);
+            }
+        }
+
         const UBTOOL_I18N = {
             es: {
                 'header.subtitle': 'Ubuntu Touch Connection Tool',
@@ -609,7 +631,7 @@
             
             try {
                 const response = await fetch('/api/device/status');
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.connected) {
                     statusElement.textContent = `Conectado - ${data.device || 'Dispositivo'}`;
@@ -633,7 +655,7 @@
             
             try {
                 const response = await fetch('/api/device/info');
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.info) {
                     const mem = data.info.memory;
@@ -671,7 +693,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({})
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 if (data.success) {
                     const d = data.details || {};
                     const py = d.python && d.python.version ? d.python.version : 'OK';
@@ -705,7 +727,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_name: name, framework })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 if (data.success) {
                     out.innerHTML = `✅ ${data.message || 'App creada'}<br><small>${data.app_path || ''}</small>`;
                     // Recargar lista de apps instaladas
@@ -789,7 +811,7 @@
             try {
                 const url = `/api/files/list?path=${encodeURIComponent(path)}`;
                 const response = await fetch(url);
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
 
                 if (!data.success) {
                     status.innerHTML = `❌ ${data.error || 'Error al listar'}`;
@@ -952,7 +974,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path, content: ta.value })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 if (data.success) {
                     status.textContent = '✅ Guardado';
                 } else {
@@ -1043,7 +1065,7 @@
                     body: JSON.stringify({})
                 });
                 
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     terminalSessionId = data.session_id;
@@ -1088,7 +1110,7 @@
                     body: JSON.stringify({ input: command })
                 });
                 
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (!data.success) {
                     output.textContent += `Error: ${data.error}\r\n`;
@@ -1107,7 +1129,7 @@
             
             try {
                 const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success && data.output) {
                     const output = document.getElementById('terminal-output');
@@ -1265,7 +1287,7 @@
         async function checkVenvStatus() {
             try {
                 const response = await fetch('/api/devtools/venv_status');
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 const statusEl = document.getElementById('dev-env-status');
                 
                 if (data.success) {
@@ -1292,7 +1314,7 @@
             
             try {
                 const response = await fetch('/api/devtools/list_apps');
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     if (data.apps.length === 0) {
@@ -1355,7 +1377,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_name: appName })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     loadInstalledApps(); // Recargar lista
@@ -1374,7 +1396,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_name: appName })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     loadInstalledApps(); // Recargar lista
@@ -1405,7 +1427,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_name: appName })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     loadInstalledApps(); // Recargar lista
@@ -1428,7 +1450,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ app_name: appName })
                 });
-                const data = await response.json();
+                const data = await parseJSONResponse(response);
                 
                 if (data.success) {
                     alert(`✅ ${data.message}\n\n📁 Estructura creada en: ${data.deploy_path}\n\n📋 Próximos pasos:\n${data.next_steps.join('\n')}`);

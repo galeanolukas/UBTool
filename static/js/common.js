@@ -1,5 +1,27 @@
 // Common functions for UBTool - included in all pages
 
+// Helper function to safely parse JSON responses
+async function parseJSONResponse(response) {
+    if (!response.ok) {
+        if (response.status === 413) {
+            throw new Error('El archivo es demasiado grande. El tamaño máximo permitido es 100MB.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    if (!text) {
+        throw new Error('Empty response from server');
+    }
+    
+    try {
+        return JSON.parse(text);
+    } catch (jsonError) {
+        console.error('JSON parse error:', jsonError, 'Response text:', text);
+        throw new Error(`Invalid JSON response: ${jsonError.message}`);
+    }
+}
+
 // Sidebar functionality
 let sidebarTimeout;
 let isSidebarOpen = false;
@@ -273,7 +295,7 @@ async function saveFile(path) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path, content })
         });
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         if (data.success) {
             alert('✅ Archivo guardado exitosamente');
         } else {
@@ -361,7 +383,7 @@ async function loadFileManagerPath(path) {
     try {
         const url = `/api/files/list?path=${encodeURIComponent(path)}`;
         const response = await fetch(url);
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
 
         if (!data.success) {
             status.innerHTML = `❌ ${data.error || 'Error al listar'}`;
@@ -505,7 +527,7 @@ async function initializeTerminal() {
             body: JSON.stringify({})
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             terminalSessionId = data.session_id;
@@ -550,7 +572,7 @@ async function sendTerminalCommand() {
             body: JSON.stringify({ input: command })
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (!data.success) {
             output.textContent += `Error: ${data.error}\r\n`;
@@ -569,7 +591,7 @@ async function pollTerminalOutput() {
     
     try {
         const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success && data.output) {
             const output = document.getElementById('terminal-output');
@@ -684,7 +706,7 @@ async function sendRootCommand() {
             body: JSON.stringify({ input: `su -c 'echo "${password}" | sudo -S su'` })
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         if (data.success) {
             closeRootPrompt();
         }
@@ -891,22 +913,29 @@ async function createWebApp(event) {
     statusDiv.innerHTML = '<p style="color: var(--ub-orange);">🔄 Creando aplicación web...</p>';
     
     try {
-        // Use FormData to support file upload
-        const formData = new FormData();
-        formData.append('app_name', name);
-        formData.append('framework', framework);
-        
-        // Add icon file if selected
+        // Validate file size before upload
         if (iconInput.files && iconInput.files[0]) {
-            formData.append('icon', iconInput.files[0]);
+            const file = iconInput.files[0];
+            const maxSize = 100 * 1024 * 1024; // 100MB
+            if (file.size > maxSize) {
+                throw new Error(`El archivo "${file.name}" es demasiado grande. El tamaño máximo permitido es 100MB.`);
+            }
         }
+        
+        // For now, send as JSON without file support
+        // TODO: Implement proper file upload when Microdot supports multipart
+        const requestData = {
+            app_name: name,
+            framework: framework
+        };
         
         const response = await fetch('/api/devtools/create_env', {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
         });
         
-        const data = await response.json();
+        const data = await parseJSONResponse(response);
         
         if (data.success) {
             statusDiv.innerHTML = `

@@ -1222,6 +1222,245 @@ def check_dev_tools(request):
             'error': str(e)
         })
 
+def get_microdot_app_content(app_name, framework, app_path, python_path):
+    """Generate Microdot app.py content"""
+    return f'''#!/usr/bin/env python3
+"""
+{app_name} - Web Application
+Created with UBTool using {framework} framework
+"""
+
+from microdot import Microdot
+from microdot.jinja import Template
+import os
+
+# Initialize app
+app = Microdot()
+
+# Configuration
+DEBUG = True
+HOST = '0.0.0.0'
+PORT = 8080
+
+@app.route('/')
+async def index(request):
+    """Main page"""
+    template = Template("""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ app_name }}</h1>
+        <p>Aplicacion funcionando con Microdot!</p>
+        <p><strong>Ruta:</strong> {app_path}</p>
+        <p><strong>Servidor:</strong> {python_path} app.py</p>
+        
+        <div class="api-info">
+            <h2>API Endpoints</h2>
+            <ul>
+                <li><code>GET /</code> - Página principal</li>
+                <li><code>GET /api/status</code> - Estado del servidor</li>
+                <li><code>GET /api/info</code> - Información de la app</li>
+            </ul>
+        </div>
+        
+        <button class="btn" onclick="checkAPI()">Probar API</button>
+        <div id="api-result" style="margin-top: 20px;"></div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        function checkAPI() {{
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {{
+                    document.getElementById('api-result').innerHTML = 
+                        '<h3>API Response:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                }})
+                .catch(error => {{
+                    document.getElementById('api-result').innerHTML = 
+                        '<h3>Error:</h3><p>' + error.message + '</p>';
+                }});
+        }}
+    </script>
+</body>
+</html>
+    """)
+    
+    return template.render(app_name=app_name)
+
+@app.route('/api/status')
+async def api_status(request):
+    """API status endpoint"""
+    return {{
+        'status': 'running',
+        'app': app_name,
+        'framework': framework,
+        'version': '1.0.0',
+        'endpoints': [
+            '/',
+            '/api/status',
+            '/api/info'
+        ]
+    }}
+
+@app.route('/api/info')
+async def api_info(request):
+    """API info endpoint"""
+    return {{
+        'app_name': app_name,
+        'framework': framework,
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
+        'description': 'App created with UBTool',
+        'features': [
+            'Microdot framework',
+            'Jinja2 templates',
+            'Static files support',
+            'REST API endpoints'
+        ]
+    }}
+
+if __name__ == '__main__':
+    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    app.run(host=HOST, port=PORT, debug=DEBUG)
+'''
+
+def get_flask_app_content(app_name, framework, app_path, python_path):
+    """Generate Flask app.py content"""
+    return f'''#!/usr/bin/env python3
+"""
+{app_name} - Web Application
+Created with UBTool using {framework} framework
+"""
+
+from flask import Flask, render_template, jsonify
+import os
+
+# Initialize app
+app = Flask(__name__)
+
+# Configuration
+DEBUG = True
+HOST = '0.0.0.0'
+PORT = 8080
+
+@app.route('/')
+def index():
+    """Main page"""
+    return render_template('index.html', app_name=app_name)
+
+@app.route('/api/status')
+def api_status():
+    """API status endpoint"""
+    return jsonify({{
+        'status': 'running',
+        'app': app_name,
+        'framework': framework,
+        'version': '1.0.0',
+        'endpoints': [
+            '/',
+            '/api/status',
+            '/api/info'
+        ]
+    }})
+
+@app.route('/api/info')
+def api_info():
+    """API info endpoint"""
+    return jsonify({{
+        'app_name': app_name,
+        'framework': framework,
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
+        'description': 'App created with UBTool',
+        'features': [
+            'Flask framework',
+            'Jinja2 templates',
+            'Static files support',
+            'REST API endpoints'
+        ]
+    }})
+
+if __name__ == '__main__':
+    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    app.run(host=HOST, port=PORT, debug=DEBUG)
+'''
+
+def get_fastapi_app_content(app_name, framework, app_path, python_path):
+    """Generate FastAPI app.py content"""
+    return f'''#!/usr/bin/env python3
+"""
+{app_name} - Web Application
+Created with UBTool using {framework} framework
+"""
+
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import uvicorn
+import os
+
+# Initialize app
+app = FastAPI(title=app_name)
+
+# Configuration
+DEBUG = True
+HOST = '0.0.0.0'
+PORT = 8080
+
+# Setup templates and static files
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+async def index(request: Request):
+    """Main page"""
+    return templates.TemplateResponse("index.html", {{"request": request, "app_name": app_name}})
+
+@app.get("/api/status")
+async def api_status():
+    """API status endpoint"""
+    return {{
+        "status": "running",
+        "app": app_name,
+        "framework": framework,
+        "version": "1.0.0",
+        "endpoints": [
+            "/",
+            "/api/status",
+            "/api/info"
+        ]
+    }}
+
+@app.get("/api/info")
+async def api_info():
+    """API info endpoint"""
+    return {{
+        "app_name": app_name,
+        "framework": framework,
+        "python_path": "{python_path}",
+        "app_path": "{app_path}",
+        "description": "App created with UBTool",
+        "features": [
+            "FastAPI framework",
+            "Jinja2 templates",
+            "Static files support",
+            "REST API endpoints",
+            "Automatic OpenAPI docs"
+        ]
+    }}
+
+if __name__ == '__main__':
+    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
+'''
+
 @app.route('/api/devtools/create_env', methods=['POST'])
 def create_virtual_env(request):
     """Crear app web usando un entorno virtual global (compartido)."""
@@ -1229,9 +1468,26 @@ def create_virtual_env(request):
         # Import configuration
         import config
         
-        data = request.json or {}
-        app_name = data.get('app_name', '').strip()
-        framework = data.get('framework', 'microdot').strip()
+        # Handle both JSON and FormData requests
+        app_name = None
+        framework = 'microdot'
+        icon_file = None
+        
+        # Check if this is a FormData request (for file uploads)
+        content_type = getattr(request, 'content_type', '')
+        if content_type and 'multipart/form-data' in content_type:
+            # Handle FormData request
+            if hasattr(request, 'form') and request.form:
+                app_name = request.form.get('app_name', '').strip()
+                framework = request.form.get('framework', 'microdot').strip()
+                # Handle file upload
+                if hasattr(request, 'files') and request.files:
+                    icon_file = request.files.get('icon')
+        else:
+            # Fallback to JSON for regular requests
+            data = request.json or {}
+            app_name = data.get('app_name', '').strip()
+            framework = data.get('framework', 'microdot').strip()
         
         if not app_name:
             return json.dumps({
@@ -1267,9 +1523,157 @@ def create_virtual_env(request):
 
         commands = [
             f"mkdir -p {app_path}",
+            f"mkdir -p {app_path}/static",
+            f"mkdir -p {app_path}/static/css", 
+            f"mkdir -p {app_path}/static/js",
+            f"mkdir -p {app_path}/static/images",
+            f"mkdir -p {app_path}/templates",
         ]
 
-        # Install framework-specific packages using config
+        # Create basic static files
+        css_content = '''/* Basic CSS for UBTool App */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+h1 {
+    color: #333;
+    text-align: center;
+}
+
+.btn {
+    background: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #0056b3;
+}
+'''
+        
+        js_content = '''// Basic JavaScript for UBTool App
+console.log('App loaded successfully!');
+
+// Basic interaction
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded');
+});
+'''
+
+        # Create static files
+        commands.extend([
+            f"echo '{css_content}' > {app_path}/static/css/style.css",
+            f"echo '{js_content}' > {app_path}/static/js/app.js",
+        ])
+
+        # Handle icon file upload
+        if icon_file:
+            try:
+                # Read file content and save to device
+                icon_content = icon_file.read()
+                icon_filename = icon_file.filename or 'icon.png'
+                icon_path = f"{app_path}/static/images/{icon_filename}"
+                
+                # Create a temporary file and push it to device
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                    temp_file.write(icon_content)
+                    temp_file_path = temp_file.name
+                
+                # Create images directory and push file to device
+                mkdir_cmd = f"mkdir -p {app_path}/static/images"
+                subprocess.run([adb_bin, 'shell', mkdir_cmd], timeout=10)
+                
+                push_result = subprocess.run([
+                    adb_bin, 'push', temp_file_path, icon_path
+                ], capture_output=True, text=True, timeout=30)
+                
+                # Clean up temp file
+                os.unlink(temp_file_path)
+                
+                if push_result.returncode != 0:
+                    print(f"Warning: Failed to upload icon: {push_result.stderr}")
+                else:
+                    print(f"Icon uploaded successfully: {icon_path}")
+                    
+            except Exception as e:
+                print(f"Warning: Error processing icon file: {e}")
+                # Continue without icon if upload fails
+
+        # Create basic template
+        template_content = f'''<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name or "Mi App" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/icon.png') }}" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ app_name or "Mi App" }}</h1>
+        <p>Aplicacion creada con UBTool usando el framework {framework}!</p>
+        
+        <div class="features">
+            <h2>Caracteristicas</h2>
+            <ul>
+                <li>Estructura de directorios organizada</li>
+                <li>Archivos estaticos (CSS, JS, imagenes)</li>
+                <li>Templates HTML con Jinja2</li>
+                <li>Configuracion lista para usar</li>
+            </ul>
+        </div>
+        
+        <div class="next-steps">
+            <h2>Proximos Pasos</h2>
+            <ol>
+                <li>Edita los archivos en <code>{app_path}</code></li>
+                <li>Agrega tu logica de negocio en <code>app.py</code></li>
+                <li>Personaliza los templates en <code>templates/</code></li>
+                <li>Añade estilos en <code>static/css/</code></li>
+                <li>Inicia el servidor con el comando mostrado abajo</li>
+            </ol>
+        </div>
+        
+        <button class="btn" onclick="showMessage()">Pruébame!</button>
+        <div id="message" style="margin-top: 20px; padding: 10px; background: #e7f3ff; border-radius: 4px; display: none;"></div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>'''
+        
+        # Create template file
+        commands.append(f"echo '{template_content}' > {app_path}/templates/index.html")
+
+        # Create framework-specific app.py
+        if framework == 'microdot':
+            app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
+        elif framework == 'flask':
+            app_py_content = get_flask_app_content(app_name, framework, app_path, global_venv_python)
+        elif framework == 'fastapi':
+            app_py_content = get_fastapi_app_content(app_name, framework, app_path, global_venv_python)
+        else:
+            app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
+        
+        commands.append(f"echo '{app_py_content}' > {app_path}/app.py")
         framework_packages = config.FRAMEWORK_PACKAGES.get(framework, [])
         if framework_packages:
             packages_str = " ".join(framework_packages)

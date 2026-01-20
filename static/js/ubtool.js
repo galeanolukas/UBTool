@@ -45,10 +45,23 @@ class UBTool {
             const response = await fetch(`${this.apiBase}${endpoint}`, options);
             
             if (!response.ok) {
+                if (response.status === 413) {
+                    throw new Error('El archivo es demasiado grande. El tamaño máximo permitido es 100MB.');
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            const text = await response.text();
+            if (!text) {
+                throw new Error('Empty response from server');
+            }
+            
+            try {
+                return JSON.parse(text);
+            } catch (jsonError) {
+                console.error('JSON parse error:', jsonError, 'Response text:', text);
+                throw new Error(`Invalid JSON response: ${jsonError.message}`);
+            }
         } catch (error) {
             console.error('API call failed:', error);
             this.showAlert('Error de conexión con el servidor', 'error');
