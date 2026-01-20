@@ -704,11 +704,11 @@
         `;
 
         modal.innerHTML = `
-            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 1000px; width: 95%; max-height: 90vh; overflow: hidden;">
                 <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
                     <h3 style="color: var(--ub-orange); margin: 0;">📝 Editor: ${path}</h3>
                     <div style="display:flex; gap: 0.5rem;">
-                        <button onclick="saveTextEditor('${path}')" class="btn-ub" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">💾 Guardar</button>
+                        <button onclick="saveTextEditor('${path}')" class="btn-ub" style="padding: 0.4rem 0.8rem;">💾 Guardar</button>
                         <button onclick="closeFileViewer()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
                     </div>
                 </div>

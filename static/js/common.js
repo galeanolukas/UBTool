@@ -284,6 +284,420 @@ async function saveFile(path) {
     }
 }
 
+// Terminal and File Manager Functions
+function openTerminal() {
+    createRealTerminalModal();
+}
+
+function openFileManager() {
+    const modal = document.createElement('div');
+    modal.id = 'file-manager-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+
+    modal.innerHTML = `
+        <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden;">
+            <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <h3 style="color: var(--ub-orange); margin: 0;">📁 File Manager</h3>
+                <button onclick="closeFileManager()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <div style="display:flex; gap: 0.5rem; align-items:center; margin-bottom: 0.75rem;">
+                <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoUp()">⬆️</button>
+                <input id="fm-path" type="text" style="flex:1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.6rem; border-radius: 6px;" />
+                <button class="btn-ub" style="padding: 0.5rem 0.75rem;" onclick="fmGoToPath()">Ir</button>
+            </div>
+            <div id="fm-status" style="margin-bottom: 0.5rem; opacity: 0.9;"></div>
+            <div id="fm-list" style="background: rgba(0,0,0,0.35); border: 1px solid var(--ub-gray); border-radius: 8px; padding: 0.5rem; height: 60vh; overflow-y: auto; font-family: 'Ubuntu', 'Arial', sans-serif;"></div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.getElementById('fm-path').value = fmCurrentPath;
+    loadFileManagerPath(fmCurrentPath);
+}
+
+// File Manager Variables and Functions
+let fmCurrentPath = '/home/phablet';
+
+function closeFileManager() {
+    const modal = document.getElementById('file-manager-modal');
+    if (modal) modal.remove();
+}
+
+function fmGoUp() {
+    if (!fmCurrentPath || fmCurrentPath === '/') {
+        loadFileManagerPath('/');
+        return;
+    }
+    const parent = fmCurrentPath.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/';
+    loadFileManagerPath(parent);
+}
+
+function fmGoToPath() {
+    const p = (document.getElementById('fm-path').value || '').trim();
+    if (!p) return;
+    loadFileManagerPath(p);
+}
+
+async function loadFileManagerPath(path) {
+    const status = document.getElementById('fm-status');
+    const list = document.getElementById('fm-list');
+    const pathInput = document.getElementById('fm-path');
+    if (!status || !list || !pathInput) return;
+
+    status.innerHTML = '<span class="loading-spinner"></span> Cargando...';
+    list.innerHTML = '';
+
+    try {
+        const url = `/api/files/list?path=${encodeURIComponent(path)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+            status.innerHTML = `❌ ${data.error || 'Error al listar'}`;
+            return;
+        }
+
+        const payload = data.data;
+        fmCurrentPath = payload.path || path;
+        pathInput.value = fmCurrentPath;
+        status.textContent = fmCurrentPath;
+
+        const entries = payload.entries || [];
+        if (!entries.length) {
+            list.innerHTML = '<div style="opacity:0.8; padding: 0.5rem;">(vacío)</div>';
+            return;
+        }
+
+        let html = '';
+        for (const e of entries) {
+            const name = e.name || '';
+            const isDir = !!e.is_dir;
+            const size = e.size_human || '';
+            const rowStyle = 'display:flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem; border-radius: 6px; cursor: pointer;';
+            
+            let left;
+            if (isDir) {
+                left = `📁 ${name}`;
+            } else {
+                const ext = (name.split('.').pop() || '').toLowerCase();
+                const videoFormats = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', '3gp', 'flv', 'wmv', 'm4v', 'wav', 'weba', 'mpg', 'mpeg', 'm4a'];
+                const imageFormats = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'svg', 'ico'];
+                
+                if (videoFormats.includes(ext)) {
+                    left = `📹 ${name}`;
+                } else if (imageFormats.includes(ext)) {
+                    left = `🖼️ ${name}`;
+                } else {
+                    left = `📄 ${name}`;
+                }
+            }
+            
+            html += `
+                <div style="${rowStyle}" onmouseover="this.style.background='rgba(233,84,32,0.10)'" onmouseout="this.style.background='transparent'" onclick="fmEntryClick(${isDir ? 'true' : 'false'}, '${encodeURIComponent(name)}')">
+                    <div style="overflow:hidden; text-overflow: ellipsis; white-space: nowrap;">${left}</div>
+                    <div style="opacity:0.8; white-space: nowrap;">${isDir ? '' : size}</div>
+                </div>
+            `;
+        }
+        list.innerHTML = html;
+    } catch (e) {
+        status.innerHTML = `❌ Error: ${e.message}`;
+    }
+}
+
+function fmEntryClick(isDir, encodedName) {
+    const name = decodeURIComponent(encodedName || '');
+    if (!name) return;
+    if (isDir) {
+        const base = (fmCurrentPath || '/').replace(/\/+$/, '');
+        const next = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
+        loadFileManagerPath(next);
+    } else {
+        const base = (fmCurrentPath || '/').replace(/\/+$/, '');
+        const fullPath = (base === '' || base === '/') ? `/${name}` : `${base}/${name}`;
+        openFile(fullPath);
+    }
+}
+
+// Terminal Functions
+let terminalSessionId = null;
+let terminalInterval = null;
+
+function createRealTerminalModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+
+    modal.innerHTML = `
+        <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 1rem; max-width: 800px; width: 95%; max-height: 90vh; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="color: var(--ub-orange); margin: 0;">🖥️ Terminal Ubuntu Touch - Shell del Dispositivo</h3>
+                <div style="display:flex; gap: 0.5rem; align-items:center;">
+                    <button onclick="openRootPrompt()" class="btn-ub" style="padding: 0.5rem 0.75rem;">Root</button>
+                    <button onclick="closeTerminal()" style="background: none; border: none; color: var(--ub-light); font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+            </div>
+            <div style="background: rgba(233, 84, 32, 0.1); border: 1px solid var(--ub-orange); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <strong>Comandos útiles:</strong> 
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ls -la</code> • 
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">ps aux</code> • 
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">getprop</code>
+            </div>
+            <div id="terminal-output" style="background: #000; color: #0f0; padding: 1rem; border-radius: 8px; height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin-bottom: 1rem; white-space: pre-wrap;"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="terminal-command" placeholder="Escribe un comando del shell del dispositivo..." style="flex: 1; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 4px; font-family: 'Courier New', monospace;">
+                <button onclick="sendTerminalCommand()" class="btn-ub">Enviar</button>
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+                Estado: <span id="device-status-terminal">Verificando...</span> | 
+                Sesión: <span id="session-id-terminal">No iniciada</span>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Initialize terminal
+    initializeTerminal();
+    
+    // Focus on input
+    setTimeout(() => {
+        document.getElementById('terminal-command').focus();
+    }, 100);
+
+    // Handle Enter key
+    document.getElementById('terminal-command').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendTerminalCommand();
+        }
+    });
+}
+
+async function initializeTerminal() {
+    try {
+        // Create terminal session
+        const response = await fetch('/api/terminal/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            terminalSessionId = data.session_id;
+            document.getElementById('device-status-terminal').textContent = 'Conectado al dispositivo';
+            document.getElementById('session-id-terminal').textContent = data.session_id.substring(0, 12) + '...';
+            
+            // Start polling for output
+            terminalInterval = setInterval(pollTerminalOutput, 500);
+            
+            // Start with empty output
+            const output = document.getElementById('terminal-output');
+            output.textContent = '';
+        } else {
+            document.getElementById('device-status-terminal').textContent = 'Error: ' + data.error;
+            document.getElementById('session-id-terminal').textContent = 'N/A';
+            document.getElementById('terminal-output').textContent = 'Error al conectar terminal: ' + data.error;
+        }
+    } catch (error) {
+        console.error('Error initializing terminal:', error);
+        document.getElementById('device-status-terminal').textContent = 'Error de conexión';
+        document.getElementById('session-id-terminal').textContent = 'N/A';
+        document.getElementById('terminal-output').textContent = 'Error al inicializar terminal';
+    }
+}
+
+async function sendTerminalCommand() {
+    const commandInput = document.getElementById('terminal-command');
+    const output = document.getElementById('terminal-output');
+    
+    if (!commandInput || !terminalSessionId) return;
+
+    const command = commandInput.value.trim();
+    if (!command) return;
+    
+    // Send command to terminal (without \r\n since manager adds it)
+    try {
+        const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ input: command })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            output.textContent += `Error: ${data.error}\r\n`;
+        }
+    } catch (error) {
+        output.textContent += `Error de conexión: ${error.message}\r\n`;
+    }
+
+    // Clear input and scroll to bottom
+    commandInput.value = '';
+    output.scrollTop = output.scrollHeight;
+}
+
+async function pollTerminalOutput() {
+    if (!terminalSessionId) return;
+    
+    try {
+        const response = await fetch(`/api/terminal/${terminalSessionId}/output`);
+        const data = await response.json();
+        
+        if (data.success && data.output) {
+            const output = document.getElementById('terminal-output');
+            let chunk = data.output;
+
+            // Strip terminal control sequences (ANSI/OSC) that can show up as "0;user@host"
+            // OSC: ESC ] ... BEL or ESC \
+            chunk = chunk.replace(/\x1b\][\s\S]*?(?:\x07|\x1b\\)/g, '');
+            // CSI: ESC [ ... letter
+            chunk = chunk.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '');
+            // Fallback: sometimes title text leaks without the ESC prefix
+            chunk = chunk.replace(/(^|\r?\n)0;[^\r\n]*?(?=(\r?\n|$))/g, '$1');
+
+            // Simplify prompt: user@host:/path$ -> user$
+            // Also handles root@host:/path# -> root#
+            chunk = chunk.replace(/([a-zA-Z0-9_-]+)@[^\s:]+:[^\r\n$#]*([\$#])/g, '$1$2');
+
+            output.textContent += chunk;
+            output.scrollTop = output.scrollHeight;
+            
+            // Update status if session became inactive
+            if (!data.active) {
+                document.getElementById('device-status-terminal').textContent = 'Desconectado';
+                clearInterval(terminalInterval);
+                terminalInterval = null;
+            }
+        }
+    } catch (error) {
+        console.error('Error polling terminal:', error);
+    }
+}
+
+function closeTerminal() {
+    if (terminalInterval) {
+        clearInterval(terminalInterval);
+        terminalInterval = null;
+    }
+    
+    if (terminalSessionId) {
+        // Close terminal session
+        fetch(`/api/terminal/${terminalSessionId}/close`, {
+            method: 'POST'
+        }).catch(console.error);
+        terminalSessionId = null;
+    }
+    
+    // Remove modal
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function openRootPrompt() {
+    if (!terminalSessionId) return;
+
+    const existing = document.getElementById('root-prompt-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'root-prompt-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+    `;
+
+    modal.innerHTML = `
+        <div style="background: var(--ub-dark); border: 2px solid var(--ub-orange); border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%;">
+            <h3 style="color: var(--ub-orange); margin: 0 0 1rem 0;">🔑 Acceso Root</h3>
+            <p style="color: var(--ub-light); margin-bottom: 1.5rem;">Ingresa la contraseña de root para obtener privilegios de administrador en el terminal.</p>
+            <input type="password" id="root-password" placeholder="Contraseña root..." style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="sendRootCommand()" class="btn-ub" style="flex: 1; background: var(--ub-orange); color: white;">Enviar</button>
+                <button onclick="closeRootPrompt()" class="btn-ub" style="flex: 1; background: rgba(255,255,255,0.1); color: var(--ub-light); border: 1px solid var(--ub-orange);">Cancelar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    
+    // Focus on password input
+    setTimeout(() => {
+        document.getElementById('root-password').focus();
+    }, 100);
+
+    // Handle Enter key
+    document.getElementById('root-password').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendRootCommand();
+        }
+    });
+}
+
+async function sendRootCommand() {
+    const password = document.getElementById('root-password').value.trim();
+    if (!password) return;
+
+    try {
+        const response = await fetch(`/api/terminal/${terminalSessionId}/write`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ input: `su -c 'echo "${password}" | sudo -S su'` })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            closeRootPrompt();
+        }
+    } catch (error) {
+        console.error('Error sending root command:', error);
+    }
+}
+
+function closeRootPrompt() {
+    const modal = document.getElementById('root-prompt-modal');
+    if (modal) modal.remove();
+}
+
 // Web App Creation Modal
 function createWebAppModal() {
     // Check if modal already exists
