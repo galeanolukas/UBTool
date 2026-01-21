@@ -194,19 +194,25 @@ async function refreshAppsList() {
                             
                             <!-- Action Buttons -->
                             <div style="padding: 0 1rem 1rem 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                <div class="w3-row">
-                                    <div class="w3-col s6" style="padding: 0.25rem;">
+                                <div class="w3-row" style="margin-top: 0.5rem;">
+                                    <div class="w3-col s4" style="padding: 0.25rem;">
                                         <button onclick="startApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
                                                 style="background: ${app.is_running ? '#9E9E9E' : '#4CAF50'}; color: white; padding: 0.5rem; font-size: 0.9rem; ${app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
                                                 ${app.is_running ? 'disabled' : ''}>
                                             ${app.is_running ? '▶️ Ya Iniciada' : '▶️ Iniciar'}
                                         </button>
                                     </div>
-                                    <div class="w3-col s6" style="padding: 0.25rem;">
+                                    <div class="w3-col s4" style="padding: 0.25rem;">
                                         <button onclick="stopApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
                                                 style="background: ${app.is_running ? '#f44336' : '#9E9E9E'}; color: white; padding: 0.5rem; font-size: 0.9rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
                                                 ${!app.is_running ? 'disabled' : ''}>
                                             ${app.is_running ? '⏹️ Detener' : '⏹️ Detener'}
+                                        </button>
+                                    </div>
+                                    <div class="w3-col s4" style="padding: 0.25rem;">
+                                        <button onclick="modoDesarrollo('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                style="background: #9C27B0; color: white; padding: 0.5rem; font-size: 0.9rem;">
+                                            🛠️ Modo Desarrollo
                                         </button>
                                     </div>
                                 </div>
@@ -331,6 +337,11 @@ function showDeleteModal(appName) {
 function closeDeleteModal() {
     document.getElementById('delete-modal').style.display = 'none';
     appToDelete = null;
+}
+
+function modoDesarrollo(appName) {
+    alert(`Modo Desarrollo presionado para: ${appName}`);
+    console.log(`Modo Desarrollo button clicked for app: ${appName}`);
 }
 
 async function confirmDelete() {
