@@ -1650,15 +1650,31 @@ document.addEventListener('DOMContentLoaded', function() {
         else:
             app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
         
-        # Create app.py using a simpler and safer method
-        # First, create a temporary file with the content
-        temp_file = f"/tmp/{app_name}_app.py"
-        with open(temp_file, 'w') as f:
-            f.write(get_microdot_app_content(app_name, framework, app_path, global_venv_python))
+        # Create app.py using adb push method
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.py') as temp_file:
+            temp_file.write(get_microdot_app_content(app_name, framework, app_path, global_venv_python).encode('utf-8'))
+            temp_file_path = temp_file.name
         
-        # Copy the temp file to the device
-        commands.append(f"cat {temp_file} > {app_path}/app.py")
+        # Push the file to device
+        push_result = subprocess.run([
+            adb_bin, 'push', temp_file_path, f"{app_path}/app.py"
+        ], capture_output=True, text=True, timeout=30)
+        
+        # Clean up temp file
+        os.unlink(temp_file_path)
+        
+        # Make it executable
         commands.append(f"chmod +x {app_path}/app.py")
+        
+        if push_result.returncode != 0:
+            print(f"Warning: Failed to push app.py: {push_result.stderr}")
+            # Fallback to echo method
+            commands.append(f"echo '#!/usr/bin/env python3' > {app_path}/app.py")
+            commands.append(f"echo 'from microdot import Microdot' >> {app_path}/app.py")
+            commands.append(f"echo 'app = Microdot()' >> {app_path}/app.py")
+            commands.append(f"echo 'app.run(host=\"0.0.0.0\", port=8081)' >> {app_path}/app.py")
+            commands.append(f"chmod +x {app_path}/app.py")
         framework_packages = config.FRAMEWORK_PACKAGES.get(framework, [])
         if framework_packages:
             packages_str = " ".join(framework_packages)
