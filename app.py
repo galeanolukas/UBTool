@@ -1242,7 +1242,8 @@ PORT = 8081
 @app.route('/')
 def index(request):
     """Main page"""
-    html_content = """<!DOCTYPE html>
+    from microdot import Response
+    html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1314,7 +1315,7 @@ def index(request):
 </body>
 </html>"""
     
-    return html_content
+    return Response(html_content, headers={{'Content-Type': 'text/html; charset=utf-8'}})
 
 @app.route('/api/status')
 def api_status(request):
