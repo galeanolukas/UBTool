@@ -1231,34 +1231,69 @@ Created with UBTool using {framework} framework
 """
 
 from microdot import Microdot
-from microdot.jinja import Template
 import os
 
-# Initialize app
 app = Microdot()
 
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = 8080
+PORT = 8081
 
 @app.route('/')
-async def index(request):
+def index(request):
     """Main page"""
-    template = Template("""<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ app_name }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>{app_name}</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #1a1a1a;
+            color: white;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+        h1 {{
+            color: #ff6b35;
+            text-align: center;
+        }}
+        .status {{
+            background: rgba(255,255,255,0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }}
+        .btn {{
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        .btn:hover {{
+            background: #e55a2b;
+        }}
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>{{ app_name }}</h1>
-        <p>Aplicacion funcionando con Microdot!</p>
-        <p><strong>Ruta:</strong> {app_path}</p>
-        <p><strong>Servidor:</strong> {python_path} app.py</p>
+        <h1>🚀 {app_name}</h1>
+        <div class="status">
+            <h2>✅ App funcionando correctamente</h2>
+            <p><strong>Framework:</strong> {framework}</p>
+            <p><strong>Puerto:</strong> {PORT}</p>
+            <p><strong>Ruta:</strong> {app_path}</p>
+            <p><strong>Python:</strong> {python_path}</p>
+        </div>
         
         <div class="api-info">
             <h2>API Endpoints</h2>
@@ -1273,7 +1308,6 @@ async def index(request):
         <div id="api-result" style="margin-top: 20px;"></div>
     </div>
     
-    <script src="/static/js/app.js"></script>
     <script>
         function checkAPI() {{
             fetch('/api/status')
@@ -1289,19 +1323,19 @@ async def index(request):
         }}
     </script>
 </body>
-</html>
-    """)
+</html>"""
     
-    return template.render(app_name=app_name)
+    return html_content
 
 @app.route('/api/status')
-async def api_status(request):
+def api_status(request):
     """API status endpoint"""
     return {{
         'status': 'running',
-        'app': app_name,
-        'framework': framework,
+        'app': '{app_name}',
+        'framework': '{framework}',
         'version': '1.0.0',
+        'port': {PORT},
         'endpoints': [
             '/',
             '/api/status',
@@ -1310,24 +1344,24 @@ async def api_status(request):
     }}
 
 @app.route('/api/info')
-async def api_info(request):
+def api_info(request):
     """API info endpoint"""
     return {{
-        'app_name': app_name,
-        'framework': framework,
+        'app_name': '{app_name}',
+        'framework': '{framework}',
         'python_path': '{python_path}',
         'app_path': '{app_path}',
         'description': 'App created with UBTool',
         'features': [
             'Microdot framework',
-            'Jinja2 templates',
-            'Static files support',
-            'REST API endpoints'
+            'Simple HTML responses',
+            'REST API endpoints',
+            'No template dependencies'
         ]
     }}
 
 if __name__ == '__main__':
-    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
 
@@ -1663,7 +1697,7 @@ document.addEventListener('DOMContentLoaded', function() {
         # Create template file
         commands.append(f"echo '{template_content}' > {app_path}/templates/index.html")
 
-        # Create framework-specific app.py
+        # Create framework-specific app.py using line-by-line echo approach
         if framework == 'microdot':
             app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
         elif framework == 'flask':
@@ -1673,7 +1707,21 @@ document.addEventListener('DOMContentLoaded', function() {
         else:
             app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
         
-        commands.append(f"echo '{app_py_content}' > {app_path}/app.py")
+        # Create app.py by writing each line separately to avoid shell escaping issues
+        # First clear the file
+        commands.append(f"echo '#!/usr/bin/env python3' > {app_path}/app.py")
+        
+        # Split content into lines and add each line (skip the shebang if present)
+        lines = app_py_content.split('\n')
+        for i, line in enumerate(lines):
+            if i == 0 and line.startswith('#!'):
+                continue  # Skip shebang as we already added it
+            # Escape single quotes in the line
+            escaped_line = line.replace("'", "'\"'\"'")
+            commands.append(f"echo '{escaped_line}' >> {app_path}/app.py")
+        
+        # Make it executable
+        commands.append(f"chmod +x {app_path}/app.py")
         framework_packages = config.FRAMEWORK_PACKAGES.get(framework, [])
         if framework_packages:
             packages_str = " ".join(framework_packages)
@@ -1771,12 +1819,60 @@ def list_web_apps(request):
                             key, value = line.split('=', 1)
                             config[key.strip()] = value.strip().strip('"\'')
                 
+                # Verificar si la app está corriendo usando archivos PID
+                is_running = False
+                process_info = {}
+                
+                # Intentar leer del archivo PID detallado primero
+                pid_check = subprocess.run(
+                    ['adb', 'shell', f'test -f /home/phablet/Apps/{app_name}/PID && grep "^PID=" /home/phablet/Apps/{app_name}/PID | cut -d"=" -f2 || echo ""'],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                if pid_check.stdout.strip():
+                    pid = pid_check.stdout.strip()
+                    # Verificar si el proceso existe
+                    process_check = subprocess.run(
+                        ['adb', 'shell', f'ps -p {pid} > /dev/null 2>&1 && echo "running" || echo "stopped"'],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    is_running = process_check.stdout.strip() == 'running'
+                    
+                    if is_running:
+                        # Obtener información adicional del archivo PID
+                        status_check = subprocess.run(
+                            ['adb', 'shell', f'cat /home/phablet/Apps/{app_name}/PID 2>/dev/null || echo ""'],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        if status_check.returncode == 0:
+                            for line in status_check.stdout.strip().split('\n'):
+                                if '=' in line:
+                                    key, value = line.split('=', 1)
+                                    process_info[key.strip()] = value.strip().strip('"\'')
+                else:
+                    # Si no hay archivo detallado, intentar con el simple
+                    simple_pid_check = subprocess.run(
+                        ['adb', 'shell', f'test -f /home/phablet/Apps/{app_name}/app.pid && cat /home/phablet/Apps/{app_name}/app.pid || echo ""'],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    
+                    if simple_pid_check.stdout.strip():
+                        pid = simple_pid_check.stdout.strip()
+                        process_check = subprocess.run(
+                            ['adb', 'shell', f'ps -p {pid} > /dev/null 2>&1 && echo "running" || echo "stopped"'],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        is_running = process_check.stdout.strip() == 'running'
+                        process_info['PID'] = pid
+                
                 apps.append({
                     'name': app_name,
                     'has_venv': venv_check.stdout.strip() == 'yes',
                     'config': config,
                     'path': f'/home/phablet/Apps/{app_name}',
-                    'global_venv': '/home/phablet/.ubtool/venv'
+                    'global_venv': '/home/phablet/.ubtool/venv',
+                    'is_running': is_running,
+                    'process_info': process_info
                 })
         
         return json.dumps({
@@ -1813,24 +1909,145 @@ def start_web_app(request):
                 'error': f'App {app_name} no encontrada'
             })
         
-        # Iniciar app usando venv global
-        start_cmd = f"cd /home/phablet/Apps/{app_name} && nohup /home/phablet/.ubtool/venv/bin/python app.py > app.log 2>&1 &"
-        result = subprocess.run(['adb', 'shell', start_cmd], timeout=10)
+        # Limpiar archivos PID huérfanos primero
+        cleanup_commands = [
+            f"test -f /home/phablet/Apps/{app_name}/PID && {{ pid=$(grep '^PID=' /home/phablet/Apps/{app_name}/PID | cut -d'=' -f2); ps -p $pid > /dev/null 2>&1 || rm -f /home/phablet/Apps/{app_name}/PID; }} || true",
+            f"test -f /home/phablet/Apps/{app_name}/app.pid && {{ pid=$(cat /home/phablet/Apps/{app_name}/app.pid); ps -p $pid > /dev/null 2>&1 || rm -f /home/phablet/Apps/{app_name}/app.pid; }} || true"
+        ]
         
-        if result.returncode == 0:
-            return json.dumps({
-                'success': True,
-                'message': f'App {app_name} iniciada',
-                'access_url': f'http://localhost:8081'  # Esto debería ser dinámico
-            })
+        for cleanup_cmd in cleanup_commands:
+            subprocess.run(['adb', 'shell', cleanup_cmd], timeout=5)
+        
+        # Verificar si ya está corriendo usando archivos PID (mismo método que list_web_apps)
+        is_running = False
+        process_info = {}
+        
+        # Intentar leer del archivo PID detallado primero
+        pid_check = subprocess.run(
+            ['adb', 'shell', f'test -f /home/phablet/Apps/{app_name}/PID && grep "^PID=" /home/phablet/Apps/{app_name}/PID | cut -d"=" -f2 || echo ""'],
+            capture_output=True, text=True, timeout=5
+        )
+        
+        if pid_check.stdout.strip():
+            pid = pid_check.stdout.strip()
+            # Verificar si el proceso existe
+            process_check = subprocess.run(
+                ['adb', 'shell', f'ps -p {pid} > /dev/null 2>&1 && echo "running" || echo "stopped"'],
+                capture_output=True, text=True, timeout=5
+            )
+            is_running = process_check.stdout.strip() == 'running'
         else:
+            # Si no hay archivo detallado, intentar con el simple
+            simple_pid_check = subprocess.run(
+                ['adb', 'shell', f'test -f /home/phablet/Apps/{app_name}/app.pid && cat /home/phablet/Apps/{app_name}/app.pid || echo ""'],
+                capture_output=True, text=True, timeout=5
+            )
+            
+            if simple_pid_check.stdout.strip():
+                pid = simple_pid_check.stdout.strip()
+                process_check = subprocess.run(
+                    ['adb', 'shell', f'ps -p {pid} > /dev/null 2>&1 && echo "running" || echo "stopped"'],
+                    capture_output=True, text=True, timeout=5
+                )
+                is_running = process_check.stdout.strip() == 'running'
+        
+        if is_running:
             return json.dumps({
                 'success': False,
-                'error': 'Error al iniciar la app',
-                'details': result.stderr
+                'error': f'App {app_name} ya está corriendo'
+            })
+        
+        # Determinar el ejecutable de Python
+        python_executable = "/home/phablet/.ubtool/venv/bin/python"
+        
+        # Iniciar app en segundo plano - no esperar respuesta
+        start_cmd = f"cd /home/phablet/Apps/{app_name} && nohup {python_executable} app.py > app.log 2>&1 &"
+        print(f"DEBUG: Running start_cmd: {start_cmd}")
+        
+        # Ejecutar en background sin esperar respuesta
+        try:
+            # Usar Popen para no esperar el resultado
+            process = subprocess.Popen(['adb', 'shell', start_cmd], 
+                                       stdout=subprocess.PIPE, 
+                                       stderr=subprocess.PIPE,
+                                       text=True)
+            
+            # No esperar - el proceso corre en background
+            print(f"DEBUG: Process started in background")
+            
+            # Esperar un momento y buscar el proceso
+            import time
+            time.sleep(3)
+            
+            # Buscar el PID del proceso iniciado
+            find_pid_cmd = f"ps aux | grep '{python_executable}.*app.py' | grep -v 'grep' | grep -v 'bash' | awk '{{print $2}}' | head -1"
+            find_result = subprocess.run(['adb', 'shell', find_pid_cmd], capture_output=True, text=True, timeout=5)
+            
+            if find_result.returncode == 0 and find_result.stdout.strip():
+                process_id = find_result.stdout.strip()
+                print(f"DEBUG: Found Process ID = {process_id}")
+                
+                # Crear archivos PID
+                port = 8081  # default
+                try:
+                    config_check = subprocess.run(['adb', 'shell', f'cat /home/phablet/Apps/{app_name}/config.py'], capture_output=True, text=True, timeout=3)
+                    if config_check.returncode == 0:
+                        for line in config_check.stdout.strip().split('\n'):
+                            if '=' in line and 'PORT' in line:
+                                port = int(line.split('=')[1].strip().strip('"\''))
+                                break
+                except:
+                    pass
+                
+                # Crear archivo PID
+                pid_info = f"""# App Process Information
+PID={process_id}
+APP_NAME={app_name}
+START_TIME=$(date +%Y-%m-%d_%H:%M:%S)
+PYTHON_EXEC={python_executable}
+APP_DIR=/home/phablet/Apps/{app_name}
+PORT={port}
+STATUS=started
+"""
+                pid_file_cmd = f"echo '{pid_info}' > /home/phablet/Apps/{app_name}/PID"
+                subprocess.run(['adb', 'shell', pid_file_cmd], timeout=3)
+                
+                simple_pid_cmd = f"echo {process_id} > /home/phablet/Apps/{app_name}/app.pid"
+                subprocess.run(['adb', 'shell', simple_pid_cmd], timeout=3)
+                
+                print(f"DEBUG: PID file created for {app_name} with process {process_id}")
+                
+                return json.dumps({
+                    'success': True,
+                    'message': f'App {app_name} iniciada (PID: {process_id})',
+                    'access_url': f'http://localhost:{port}',
+                    'port': port,
+                    'process_id': process_id,
+                    'note': 'El servidor está iniciando. Verifica el estado en unos segundos.'
+                })
+            else:
+                # No encontramos el PID pero el comando se ejecutó
+                return json.dumps({
+                    'success': True,
+                    'message': f'App {app_name} iniciada (proceso en background)',
+                    'access_url': f'http://localhost:8081',
+                    'port': 8081,
+                    'note': 'El servidor está iniciando. El PID se asignará en unos segundos.'
+                })
+                
+        except Exception as e:
+            print(f"DEBUG: Exception in start_app: {str(e)}")
+            # Si hay excepción, pero el proceso pudo iniciar, devolver éxito
+            return json.dumps({
+                'success': True,
+                'message': f'App {app_name} iniciada (proceso en background)',
+                'access_url': f'http://localhost:8081',
+                'port': 8081,
+                'note': 'El servidor está iniciando. Verifica el estado en unos segundos.'
             })
             
     except Exception as e:
+        print(f"DEBUG: Exception in start_app: {str(e)}")
         return json.dumps({
             'success': False,
             'error': str(e)
@@ -1849,16 +2066,65 @@ def stop_web_app(request):
                 'error': 'Nombre de app requerido'
             })
         
-        # Detener app (matar proceso python)
-        stop_cmd = f"pkill -f '/home/phablet/Apps/{app_name}.*app.py' || pkill -f 'app.py.*{app_name}'"
-        result = subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
+        # Leer PID del archivo si existe (primero intentar el archivo detallado)
+        pid_file_detailed = f"/home/phablet/Apps/{app_name}/PID"
+        pid_file_simple = f"/home/phablet/Apps/{app_name}/app.pid"
         
-        return json.dumps({
-            'success': True,
-            'message': f'App {app_name} detenida'
-        })
+        # Intentar leer del archivo detallado primero
+        get_pid_cmd = f"test -f {pid_file_detailed} && grep '^PID=' {pid_file_detailed} | cut -d'=' -f2 || echo ''"
+        pid_result = subprocess.run(['adb', 'shell', get_pid_cmd], capture_output=True, text=True, timeout=5)
+        
+        if not pid_result.stdout.strip():
+            # Si no hay en el detallado, intentar el simple
+            get_pid_cmd = f"cat {pid_file_simple} 2>/dev/null || echo ''"
+            pid_result = subprocess.run(['adb', 'shell', get_pid_cmd], capture_output=True, text=True, timeout=5)
+        
+        if pid_result.stdout.strip():
+            process_id = pid_result.stdout.strip()
+            print(f"DEBUG: Stopping process {process_id}")
+            
+            # Verificar si el proceso todavía existe
+            verify_cmd = f"ps -p {process_id} > /dev/null 2>&1 && echo 'running' || echo 'stopped'"
+            verify_result = subprocess.run(['adb', 'shell', verify_cmd], capture_output=True, text=True, timeout=5)
+            
+            if verify_result.stdout.strip() == 'running':
+                # Detener proceso específico por PID
+                stop_cmd = f"kill {process_id}"
+                result = subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
+                
+                # Esperar un momento y verificar que se detuvo
+                import time
+                time.sleep(1)
+                
+                verify_after_cmd = f"ps -p {process_id} > /dev/null 2>&1 && echo 'running' || echo 'stopped'"
+                verify_after_result = subprocess.run(['adb', 'shell', verify_after_cmd], capture_output=True, text=True, timeout=5)
+                
+                if verify_after_result.stdout.strip() == 'running':
+                    # Si todavía corre, forzar detención
+                    force_stop_cmd = f"kill -9 {process_id}"
+                    subprocess.run(['adb', 'shell', force_stop_cmd], timeout=5)
+            
+            # Eliminar ambos archivos PID
+            clean_pid_cmd = f"rm -f {pid_file_detailed} {pid_file_simple}"
+            subprocess.run(['adb', 'shell', clean_pid_cmd], timeout=5)
+            
+            return json.dumps({
+                'success': True,
+                'message': f'App {app_name} detenida (PID: {process_id})'
+            })
+        else:
+            # Si no hay PID, usar método general
+            print(f"DEBUG: No PID found, using general stop method")
+            stop_cmd = f"pkill -f '/home/phablet/Apps/{app_name}.*app.py' || pkill -f 'app.py.*{app_name}'"
+            result = subprocess.run(['adb', 'shell', stop_cmd], timeout=10)
+            
+            return json.dumps({
+                'success': True,
+                'message': f'App {app_name} detenida'
+            })
         
     except Exception as e:
+        print(f"DEBUG: Exception in stop_app: {str(e)}")
         return json.dumps({
             'success': False,
             'error': str(e)

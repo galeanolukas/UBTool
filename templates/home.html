@@ -482,8 +482,7 @@
         loadFileManagerPath(fmCurrentPath);
     }
 
-    // File Manager Variables and Functions
-    let fmCurrentPath = '/home/phablet';
+    // File Manager Functions
 
     function closeFileManager() {
         const modal = document.getElementById('file-manager-modal');
@@ -776,8 +775,6 @@
     }
 
     // Terminal Functions
-    let terminalSessionId = null;
-    let terminalInterval = null;
 
     function createRealTerminalModal() {
         const modal = document.createElement('div');

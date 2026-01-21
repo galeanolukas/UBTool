@@ -152,6 +152,7 @@ async function refreshAppsList() {
                                         <div style="margin-top: 0.5rem;">
                                             ${app.has_venv ? '<span class="w3-tag w3-round" style="background: #4CAF50; color: white;">✅ Entorno</span>' : '<span class="w3-tag w3-round" style="background: #f44336; color: white;">❌ Sin Entorno</span>'}
                                             ${app.is_running ? '<span class="w3-tag w3-round" style="background: #2196F3; color: white; margin-left: 0.25rem;">▶️ Activa</span>' : '<span class="w3-tag w3-round" style="background: #9E9E9E; color: white; margin-left: 0.25rem;">⏸️ Inactiva</span>'}
+                                            ${app.process_info && app.process_info.START_TIME ? `<span class="w3-tag w3-round" style="background: #FF9800; color: white; margin-left: 0.25rem;">🕐 ${app.process_info.START_TIME}</span>` : ''}
                                         </div>
                                     </div>
                                     <div class="w3-col l4 w3-right-align">
@@ -181,28 +182,42 @@ async function refreshAppsList() {
                             <div style="padding: 0 1rem 1rem 1rem;">
                                 <div class="w3-row">
                                     <div class="w3-col s6" style="padding: 0.25rem;">
-                                        <button onclick="startApp('${app.name}')" class="w3-btn w3-round-large w3-block" style="background: #4CAF50; color: white; padding: 0.5rem;">
-                                            ▶️ Iniciar
+                                        <button onclick="startApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                style="background: ${app.is_running ? '#9E9E9E' : '#4CAF50'}; color: white; padding: 0.5rem; ${app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
+                                                ${app.is_running ? 'disabled' : ''}>
+                                            ${app.is_running ? '▶️ Ya Iniciada' : '▶️ Iniciar'}
                                         </button>
                                     </div>
                                     <div class="w3-col s6" style="padding: 0.25rem;">
-                                        <button onclick="stopApp('${app.name}')" class="w3-btn w3-round-large w3-block" style="background: #f44336; color: white; padding: 0.5rem;">
-                                            ⏹️ Detener
+                                        <button onclick="stopApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                style="background: ${app.is_running ? '#f44336' : '#9E9E9E'}; color: white; padding: 0.5rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
+                                                ${!app.is_running ? 'disabled' : ''}>
+                                            ${app.is_running ? '⏹️ Detener' : '⏹️ Detenida'}
                                         </button>
                                     </div>
                                 </div>
                                 <div class="w3-row" style="margin-top: 0.5rem;">
                                     <div class="w3-col s6" style="padding: 0.25rem;">
-                                        <button onclick="openApp('${app.name}', ${app.config.port || 8081})" class="w3-btn w3-round-large w3-block" style="background: var(--ub-orange); color: white; padding: 0.5rem;">
-                                            🌐 Abrir
+                                        <button onclick="openApp('${app.name}', ${app.config.port || 8081})" class="w3-btn w3-round-large w3-block" 
+                                                style="background: ${app.is_running ? 'var(--ub-orange)' : '#9E9E9E'}; color: white; padding: 0.5rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
+                                                ${!app.is_running ? 'disabled' : ''}>
+                                            ${app.is_running ? '🌐 Abrir' : '🌐 Inactiva'}
                                         </button>
                                     </div>
                                     <div class="w3-col s6" style="padding: 0.25rem;">
-                                        <button onclick="showDeleteModal('${app.name}')" class="w3-btn w3-round-large w3-block" style="background: rgba(244,67,54,0.2); color: #f44336; border: 1px solid #f44336; padding: 0.5rem;">
+                                        <button onclick="showDeleteModal('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                style="background: ${app.is_running ? 'rgba(244,67,54,0.2)' : 'rgba(244,67,54,0.2)'}; color: #f44336; border: 1px solid #f44336; padding: 0.5rem;">
                                             🗑️ Eliminar
                                         </button>
                                     </div>
                                 </div>
+                                ${app.process_info && app.process_info.PID ? `
+                                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: 4px; font-size: 0.8rem; color: var(--ub-gray);">
+                                        <strong>PID:</strong> ${app.process_info.PID} | 
+                                        <strong>Puerto:</strong> ${app.process_info.PORT || app.config.port || 'N/A'} |
+                                        <strong>Estado:</strong> ${app.process_info.STATUS || 'unknown'}
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
