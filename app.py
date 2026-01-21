@@ -1222,8 +1222,29 @@ def check_dev_tools(request):
             'error': str(e)
         })
 
+def get_next_available_port():
+    """Get next available port for new app"""
+    try:
+        # List existing apps
+        adb_bin = adb_manager.adb_path or 'adb'
+        list_cmd = f"{adb_bin} shell 'ls -1 /home/phablet/Apps/ 2>/dev/null || echo \"\"'"
+        result = subprocess.run(['bash', '-c', list_cmd], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode == 0:
+            apps = [app.strip() for app in result.stdout.strip().split('\n') if app.strip()]
+            # Count existing apps and calculate next port
+            port = 8081 + len(apps)
+            return port
+        else:
+            return 8081  # Default if can't list apps
+    except:
+        return 8081  # Default on error
+
 def get_microdot_app_content(app_name, framework, app_path, python_path):
     """Generate Microdot app.py content"""
+    # Get dynamic port
+    port = get_next_available_port()
+    
     return f'''#!/usr/bin/env python3
 """
 {app_name} - Web Application
@@ -1238,7 +1259,7 @@ app = Microdot()
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = 8081
+PORT = {port}
 
 @app.route('/')
 def index(request):
@@ -1255,7 +1276,7 @@ def index(request):
         <h2>✅ App Status: RUNNING</h2>
         <p><strong>Framework:</strong> {framework}</p>
         <p><strong>Host:</strong> {HOST}</p>
-        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Puerto:</strong> {port}</p>
         <p><strong>Python:</strong> {python_path}</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
@@ -1285,7 +1306,7 @@ def api_status(request):
         'framework': '{framework}',
         'python_path': '{python_path}',
         'app_path': '{app_path}',
-        'port': {PORT},
+        'port': {port},
         'debug': {DEBUG},
         'host': '{HOST}'
     }}
@@ -1304,12 +1325,15 @@ def api_info(request):
     }}
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, debug=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
+    app.run(host=HOST, port=port, debug=DEBUG)
 '''
 
 def get_flask_app_content(app_name, framework, app_path, python_path):
     """Generate Flask app.py content"""
+    # Get dynamic port
+    port = get_next_available_port()
+    
     return f'''#!/usr/bin/env python3
 """
 {app_name} - Web Application
@@ -1323,7 +1347,7 @@ app = Flask(__name__)
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = 8080
+PORT = {port}
 
 @app.route('/')
 def index():
@@ -1340,7 +1364,7 @@ def index():
         <h2>✅ Flask App Status: RUNNING</h2>
         <p><strong>Framework:</strong> {framework}</p>
         <p><strong>Host:</strong> {HOST}</p>
-        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Puerto:</strong> {port}</p>
         <p><strong>Python:</strong> {python_path}</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
@@ -1370,7 +1394,7 @@ def api_status():
         'framework': '{framework}',
         'python_path': '{python_path}',
         'app_path': '{app_path}',
-        'port': {PORT},
+        'port': {port},
         'debug': {DEBUG},
         'host': '{HOST}'
     })
@@ -1389,12 +1413,15 @@ def api_info():
     })
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, debug=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
+    app.run(host=HOST, port=port, debug=DEBUG)
 '''
 
 def get_fastapi_app_content(app_name, framework, app_path, python_path):
     """Generate FastAPI app.py content"""
+    # Get dynamic port
+    port = get_next_available_port()
+    
     return f'''#!/usr/bin/env python3
 """
 {app_name} - Web Application
@@ -1410,7 +1437,7 @@ app = FastAPI(title=app_name)
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = 8080
+PORT = {port}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -1427,7 +1454,7 @@ async def index():
         <h2>✅ FastAPI App Status: RUNNING</h2>
         <p><strong>Framework:</strong> {framework}</p>
         <p><strong>Host:</strong> {HOST}</p>
-        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Puerto:</strong> {port}</p>
         <p><strong>Python:</strong> {python_path}</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
@@ -1458,7 +1485,7 @@ async def api_status():
         "framework": "{framework}",
         "python_path": "{python_path}",
         "app_path": "{app_path}",
-        "port": {PORT},
+        "port": {port},
         "debug": {DEBUG},
         "host": "{HOST}",
         "endpoints": ["/", "/api/status", "/api/info", "/docs"]
@@ -1478,8 +1505,8 @@ async def api_info():
     }}
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
-    uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
+    uvicorn.run(app, host=HOST, port=port, reload=DEBUG)
 '''
 
 @app.route('/api/devtools/create_env', methods=['POST'])
