@@ -1911,6 +1911,34 @@ def list_web_apps(request):
                         )
                         is_running = process_check.stdout.strip() == 'running'
                         process_info['PID'] = pid
+                        
+                        # Si está corriendo, obtener el puerto dinámico desde su API
+                        if is_running:
+                            try:
+                                # Intentar obtener el puerto desde el API endpoint de la app
+                                port_from_config = config.get('port', '8081')  # fallback al config
+                                
+                                # Hacer una petición al API status de la app para obtener el puerto real
+                                api_check = subprocess.run(
+                                    ['adb', 'shell', f'curl -s http://localhost:{port_from_config}/api/status 2>/dev/null | grep -o \'"port": [0-9]*\' | cut -d: -f2 | tr -d " " || echo "{port_from_config}"'],
+                                    capture_output=True, text=True, timeout=3
+                                )
+                                
+                                if api_check.returncode == 0 and api_check.stdout.strip():
+                                    try:
+                                        dynamic_port = int(api_check.stdout.strip())
+                                        config['port'] = str(dynamic_port)
+                                        print(f"DEBUG: Got dynamic port {dynamic_port} for app {app_name}")
+                                    except ValueError:
+                                        print(f"DEBUG: Could not parse port for app {app_name}, using config")
+                                        config['port'] = port_from_config
+                                else:
+                                    # Si no se puede obtener del API, usar el del config
+                                    config['port'] = port_from_config
+                                    print(f"DEBUG: Could not get port from API for app {app_name}, using config {port_from_config}")
+                            except Exception as e:
+                                print(f"DEBUG: Error getting dynamic port for {app_name}: {e}")
+                                config['port'] = config.get('port', '8081')
                 
                 apps.append({
                     'name': app_name,

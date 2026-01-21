@@ -143,65 +143,78 @@ async function refreshAppsList() {
             } else {
                 appsGrid.innerHTML = data.apps.map(app => `
                     <div class="w3-third" style="padding: 0.5rem;">
-                        <div class="w3-card w3-round-large" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+                        <div class="w3-card w3-round-large" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); overflow: hidden; transition: all 0.3s ease;" 
+                             onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 30px rgba(233,84,32,0.2)'; this.style.borderColor='var(--ub-orange)'" 
+                             onmouseout="this.style.transform=''; this.style.boxShadow=''; this.style.borderColor='rgba(255,255,255,0.1)'">
                             <!-- App Header -->
                             <div style="background: linear-gradient(135deg, rgba(233,84,32,0.2) 0%, rgba(255,107,53,0.1) 100%); padding: 1rem;">
                                 <div class="w3-row">
                                     <div class="w3-col l8">
-                                        <h4 style="color: var(--ub-orange); margin: 0; font-size: 1.2rem;">🚀 ${app.name}</h4>
-                                        <div style="margin-top: 0.5rem;">
-                                            ${app.has_venv ? '<span class="w3-tag w3-round" style="background: #4CAF50; color: white;">✅ Entorno</span>' : '<span class="w3-tag w3-round" style="background: #f44336; color: white;">❌ Sin Entorno</span>'}
-                                            ${app.is_running ? '<span class="w3-tag w3-round" style="background: #2196F3; color: white; margin-left: 0.25rem;">▶️ Activa</span>' : '<span class="w3-tag w3-round" style="background: #9E9E9E; color: white; margin-left: 0.25rem;">⏸️ Inactiva</span>'}
-                                            ${app.process_info && app.process_info.START_TIME ? `<span class="w3-tag w3-round" style="background: #FF9800; color: white; margin-left: 0.25rem;">🕐 ${app.process_info.START_TIME}</span>` : ''}
+                                        <h4 style="color: var(--ub-orange); margin: 0; font-size: 1.2rem; font-weight: 600;">🚀 ${app.name}</h4>
+                                        <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                            ${app.has_venv ? '<span class="w3-tag w3-round" style="background: #4CAF50; color: white; font-size: 0.75rem; padding: 2px 6px;">✅ Entorno</span>' : '<span class="w3-tag w3-round" style="background: #f44336; color: white; font-size: 0.75rem; padding: 2px 6px;">❌ Sin Entorno</span>'}
+                                            ${app.is_running ? '<span class="w3-tag w3-round" style="background: #2196F3; color: white; font-size: 0.75rem; padding: 2px 6px;">▶️ Activa</span>' : '<span class="w3-tag w3-round" style="background: #9E9E9E; color: white; font-size: 0.75rem; padding: 2px 6px;">⏸️ Inactiva</span>'}
+                                            ${app.process_info && app.process_info.START_TIME ? `<span class="w3-tag w3-round" style="background: #FF9800; color: white; font-size: 0.75rem; padding: 2px 6px;">🕐 ${app.process_info.START_TIME}</span>` : ''}
                                         </div>
                                     </div>
                                     <div class="w3-col l4 w3-right-align">
-                                        <div style="font-size: 2rem;">${getFrameworkIcon(app.config.framework || 'unknown')}</div>
+                                        <div style="font-size: 2rem; opacity: 0.8;">${getFrameworkIcon(app.config.framework || 'unknown')}</div>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- App Info -->
                             <div style="padding: 1rem;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--ub-gray);">
-                                    <strong>Ruta:</strong> <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${app.path}</code>
-                                </p>
+                                <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                    <p style="margin: 0; font-size: 0.85rem; color: var(--ub-gray); display: flex; align-items: center; gap: 0.5rem;">
+                                        <strong style="color: var(--ub-orange);">📁 Ruta:</strong> 
+                                        <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; flex: 1; word-break: break-all;">${app.path}</code>
+                                    </p>
+                                </div>
+                                
                                 ${app.config.framework ? `
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: var(--ub-gray);">
-                                        <strong>Framework:</strong> ${app.config.framework}
-                                    </p>
+                                    <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                        <p style="margin: 0; font-size: 0.85rem; color: var(--ub-gray); display: flex; align-items: center; gap: 0.5rem;">
+                                            <strong style="color: var(--ub-orange);">⚙️ Framework:</strong> 
+                                            <span style="background: rgba(233,84,32,0.2); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">${app.config.framework}</span>
+                                        </p>
+                                    </div>
                                 ` : ''}
+                                
                                 ${app.config.port ? `
-                                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: var(--ub-gray);">
-                                        <strong>Puerto:</strong> ${app.config.port}
-                                    </p>
+                                    <div style="background: rgba(255,255,255,0.03); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                        <p style="margin: 0; font-size: 0.85rem; color: var(--ub-gray); display: flex; align-items: center; gap: 0.5rem;">
+                                            <strong style="color: var(--ub-orange);">🌐 Puerto:</strong> 
+                                            <span style="background: ${app.is_running ? '#4CAF50' : '#9E9E9E'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">${app.config.port}</span>
+                                            ${app.is_running ? `<a href="http://localhost:${app.config.port}" target="_blank" style="margin-left: 0.5rem; color: var(--ub-orange); text-decoration: none; font-size: 0.8rem;">🔗 Abrir</a>` : ''}
+                                        </p>
+                                    </div>
                                 ` : ''}
                             </div>
                             
                             <!-- Action Buttons -->
-                            <div style="padding: 0 1rem 1rem 1rem;">
+                            <div style="padding: 0 1rem 1rem 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                                 <div class="w3-row">
                                     <div class="w3-col s6" style="padding: 0.25rem;">
                                         <button onclick="startApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
-                                                style="background: ${app.is_running ? '#9E9E9E' : '#4CAF50'}; color: white; padding: 0.5rem; ${app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
+                                                style="background: ${app.is_running ? '#9E9E9E' : '#4CAF50'}; color: white; padding: 0.5rem; font-size: 0.9rem; ${app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
                                                 ${app.is_running ? 'disabled' : ''}>
                                             ${app.is_running ? '▶️ Ya Iniciada' : '▶️ Iniciar'}
                                         </button>
                                     </div>
                                     <div class="w3-col s6" style="padding: 0.25rem;">
                                         <button onclick="stopApp('${app.name}')" class="w3-btn w3-round-large w3-block" 
-                                                style="background: ${app.is_running ? '#f44336' : '#9E9E9E'}; color: white; padding: 0.5rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
+                                                style="background: ${app.is_running ? '#f44336' : '#9E9E9E'}; color: white; padding: 0.5rem; font-size: 0.9rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
                                                 ${!app.is_running ? 'disabled' : ''}>
-                                            ${app.is_running ? '⏹️ Detener' : '⏹️ Detenida'}
+                                            ${app.is_running ? '⏹️ Detener' : '⏹️ Detener'}
                                         </button>
                                     </div>
                                 </div>
                                 <div class="w3-row" style="margin-top: 0.5rem;">
                                     <div class="w3-col s6" style="padding: 0.25rem;">
-                                        <button onclick="openApp('${app.name}', ${app.config.port || 8081})" class="w3-btn w3-round-large w3-block" 
-                                                style="background: ${app.is_running ? 'var(--ub-orange)' : '#9E9E9E'}; color: white; padding: 0.5rem; ${!app.is_running ? 'cursor: not-allowed; opacity: 0.6;' : ''}" 
-                                                ${!app.is_running ? 'disabled' : ''}>
-                                            ${app.is_running ? '🌐 Abrir' : '🌐 Inactiva'}
+                                        <button onclick="viewLogs('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                style="background: #FF9800; color: white; padding: 0.5rem; font-size: 0.9rem;">
+                                            📋 Ver Logs
                                         </button>
                                     </div>
                                     <div class="w3-col s6" style="padding: 0.25rem;">
