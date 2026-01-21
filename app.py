@@ -1366,26 +1366,26 @@ PORT = {port}
 @app.route('/')
 def index():
     """Main page"""
-    html_content = f"""<!DOCTYPE html>
+    html_content = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{app_name}</title>
+    <title>""" + app_name + """</title>
 </head>
 <body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
-    <h1 style="color: #ff6b35;">🌶️ {app_name}</h1>
+    <h1 style="color: #ff6b35;">🌶️ """ + app_name + """</h1>
     <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
         <h2>✅ Flask App Status: RUNNING</h2>
-        <p><strong>Framework:</strong> {framework}</p>
-        <p><strong>Host:</strong> {HOST}</p>
-        <p><strong>Puerto:</strong> {port}</p>
-        <p><strong>Python:</strong> {python_path}</p>
+        <p><strong>Framework:</strong> """ + framework + """</p>
+        <p><strong>Host:</strong> """ + HOST + """</p>
+        <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
+        <p><strong>Python:</strong> """ + python_path + """</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
         <h3>📋 App Information</h3>
-        <p><strong>App Name:</strong> {app_name}</p>
-        <p><strong>App Path:</strong> {app_path}</p>
-        <p><strong>Debug Mode:</strong> {DEBUG}</p>
+        <p><strong>App Name:</strong> """ + app_name + """</p>
+        <p><strong>App Path:</strong> """ + app_path + """</p>
+        <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
         <p><strong>Created:</strong> with UBTool</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
@@ -1463,26 +1463,26 @@ PORT = {port}
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Main page"""
-    html_content = f"""<!DOCTYPE html>
+    html_content = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{app_name}</title>
+    <title>""" + app_name + """</title>
 </head>
 <body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
-    <h1 style="color: #ff6b35;">⚡ {app_name}</h1>
+    <h1 style="color: #ff6b35;">⚡ """ + app_name + """</h1>
     <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
         <h2>✅ FastAPI App Status: RUNNING</h2>
-        <p><strong>Framework:</strong> {framework}</p>
-        <p><strong>Host:</strong> {HOST}</p>
-        <p><strong>Puerto:</strong> {port}</p>
-        <p><strong>Python:</strong> {python_path}</p>
+        <p><strong>Framework:</strong> """ + framework + """</p>
+        <p><strong>Host:</strong> """ + HOST + """</p>
+        <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
+        <p><strong>Python:</strong> """ + python_path + """</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
         <h3>📋 App Information</h3>
-        <p><strong>App Name:</strong> {app_name}</p>
-        <p><strong>App Path:</strong> {app_path}</p>
-        <p><strong>Debug Mode:</strong> {DEBUG}</p>
+        <p><strong>App Name:</strong> """ + app_name + """</p>
+        <p><strong>App Path:</strong> """ + app_path + """</p>
+        <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
         <p><strong>Created:</strong> with UBTool</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
