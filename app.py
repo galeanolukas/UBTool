@@ -1301,7 +1301,7 @@ def index(request):
 </body>
 </html>"""
     
-    return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
+    return Response(html_content, headers={{'Content-Type': 'text/html; charset=utf-8'}})
 
 @app.route('/api/status')
 def api_status(request):
