@@ -1311,12 +1311,12 @@ def index(request):
     <script>
         function checkAPI() {{
             fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {{
+                .then(function(response) {{ return response.json(); }})
+                .then(function(data) {{
                     document.getElementById('api-result').innerHTML = 
                         '<h3>API Response:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
                 }})
-                .catch(error => {{
+                .catch(function(error) {{
                     document.getElementById('api-result').innerHTML = 
                         '<h3>Error:</h3><p>' + error.message + '</p>';
                 }});
