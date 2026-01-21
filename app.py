@@ -1242,7 +1242,7 @@ PORT = 8081
 @app.route('/')
 def index(request):
     """Main page"""
-    html_content = f"""<!DOCTYPE html>
+    html_content = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
