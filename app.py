@@ -1316,10 +1316,8 @@ def get_flask_app_content(app_name, framework, app_path, python_path):
 Created with UBTool using {framework} framework
 """
 
-from flask import Flask, render_template, jsonify
-import os
+from flask import Flask, render_template_string, jsonify
 
-# Initialize app
 app = Flask(__name__)
 
 # Configuration
@@ -1330,42 +1328,68 @@ PORT = 8080
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html', app_name=app_name)
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{app_name}</title>
+</head>
+<body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
+    <h1 style="color: #ff6b35;">🌶️ {app_name}</h1>
+    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
+        <h2>✅ Flask App Status: RUNNING</h2>
+        <p><strong>Framework:</strong> {framework}</p>
+        <p><strong>Host:</strong> {HOST}</p>
+        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Python:</strong> {python_path}</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>📋 App Information</h3>
+        <p><strong>App Name:</strong> {app_name}</p>
+        <p><strong>App Path:</strong> {app_path}</p>
+        <p><strong>Debug Mode:</strong> {DEBUG}</p>
+        <p><strong>Created:</strong> with UBTool</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>🔧 Available Endpoints</h3>
+        <p><code>GET /</code> - Main page</p>
+        <p><code>GET /api/status</code> - Status check</p>
+        <p><code>GET /api/info</code> - App information</p>
+    </div>
+</body>
+</html>"""
+    
+    return html_content
 
 @app.route('/api/status')
 def api_status():
     """API status endpoint"""
-    return jsonify({{
+    return jsonify({
         'status': 'running',
-        'app': app_name,
-        'framework': framework,
-        'version': '1.0.0',
-        'endpoints': [
-            '/',
-            '/api/status',
-            '/api/info'
-        ]
-    }})
+        'app': '{app_name}',
+        'framework': '{framework}',
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
+        'port': {PORT},
+        'debug': {DEBUG},
+        'host': '{HOST}'
+    })
 
 @app.route('/api/info')
 def api_info():
     """API info endpoint"""
-    return jsonify({{
-        'app_name': app_name,
-        'framework': framework,
+    return jsonify({
+        'app_name': '{app_name}',
+        'framework': '{framework}',
         'python_path': '{python_path}',
         'app_path': '{app_path}',
         'description': 'App created with UBTool',
-        'features': [
-            'Flask framework',
-            'Jinja2 templates',
-            'Static files support',
-            'REST API endpoints'
-        ]
-    }})
+        'version': '1.0.0',
+        'endpoints': ['/', '/api/status', '/api/info']
+    })
 
 if __name__ == '__main__':
-    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
 
@@ -1377,13 +1401,10 @@ def get_fastapi_app_content(app_name, framework, app_path, python_path):
 Created with UBTool using {framework} framework
 """
 
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 import uvicorn
-import os
 
-# Initialize app
 app = FastAPI(title=app_name)
 
 # Configuration
@@ -1391,50 +1412,73 @@ DEBUG = True
 HOST = '0.0.0.0'
 PORT = 8080
 
-# Setup templates and static files
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-async def index(request: Request):
+@app.get("/", response_class=HTMLResponse)
+async def index():
     """Main page"""
-    return templates.TemplateResponse("index.html", {{"request": request, "app_name": app_name}})
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{app_name}</title>
+</head>
+<body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
+    <h1 style="color: #ff6b35;">⚡ {app_name}</h1>
+    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
+        <h2>✅ FastAPI App Status: RUNNING</h2>
+        <p><strong>Framework:</strong> {framework}</p>
+        <p><strong>Host:</strong> {HOST}</p>
+        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Python:</strong> {python_path}</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>📋 App Information</h3>
+        <p><strong>App Name:</strong> {app_name}</p>
+        <p><strong>App Path:</strong> {app_path}</p>
+        <p><strong>Debug Mode:</strong> {DEBUG}</p>
+        <p><strong>Created:</strong> with UBTool</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>🔧 Available Endpoints</h3>
+        <p><code>GET /</code> - Main page</p>
+        <p><code>GET /api/status</code> - Status check</p>
+        <p><code>GET /api/info</code> - App information</p>
+        <p><code>GET /docs</code> - OpenAPI documentation</p>
+    </div>
+</body>
+</html>"""
+    
+    return html_content
 
 @app.get("/api/status")
 async def api_status():
     """API status endpoint"""
     return {{
         "status": "running",
-        "app": app_name,
-        "framework": framework,
-        "version": "1.0.0",
-        "endpoints": [
-            "/",
-            "/api/status",
-            "/api/info"
-        ]
+        "app": "{app_name}",
+        "framework": "{framework}",
+        "python_path": "{python_path}",
+        "app_path": "{app_path}",
+        "port": {PORT},
+        "debug": {DEBUG},
+        "host": "{HOST}",
+        "endpoints": ["/", "/api/status", "/api/info", "/docs"]
     }}
 
 @app.get("/api/info")
 async def api_info():
     """API info endpoint"""
     return {{
-        "app_name": app_name,
-        "framework": framework,
+        "app_name": "{app_name}",
+        "framework": "{framework}",
         "python_path": "{python_path}",
         "app_path": "{app_path}",
         "description": "App created with UBTool",
-        "features": [
-            "FastAPI framework",
-            "Jinja2 templates",
-            "Static files support",
-            "REST API endpoints",
-            "Automatic OpenAPI docs"
-        ]
+        "version": "1.0.0",
+        "endpoints": ["/", "/api/status", "/api/info", "/docs"]
     }}
 
 if __name__ == '__main__':
-    print(f"Starting {{{{ app_name }}}} on http://{{{{ HOST }}}}:{{{{ PORT }}}}")
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
 '''
 
