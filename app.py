@@ -1224,10 +1224,10 @@ def check_dev_tools(request):
 
 def get_microdot_app_content(app_name, framework, app_path, python_path):
     """Generate Microdot app.py content"""
-    return '''#!/usr/bin/env python3
+    return f'''#!/usr/bin/env python3
 """
-test_micro - Web Application
-Created with UBTool using microdot framework
+{app_name} - Web Application
+Created with UBTool using {framework} framework
 """
 
 from microdot import Microdot
@@ -1243,109 +1243,68 @@ PORT = 8081
 @app.route('/')
 def index(request):
     """Main page"""
-    html_content = """<!DOCTYPE html>
-<html lang="es">
+    html_content = f"""<!DOCTYPE html>
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>test_micro</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 2rem;
-            background: #1a1a1a;
-            color: white;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: #ff6b35;
-            text-align: center;
-            font-size: 2.5rem;
-        }
-        .status {
-            background: rgba(255,255,255,0.1);
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin: 2rem 0;
-            text-align: center;
-        }
-        .info {
-            background: rgba(255,255,255,0.05);
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        .success {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-    </style>
+    <title>{app_name}</title>
 </head>
-<body>
-    <div class="container">
-        <h1>🚀 test_micro</h1>
-        
-        <div class="status">
-            <h2 class="success">✅ App Status: RUNNING</h2>
-            <p><strong>Framework:</strong> microdot</p>
-            <p><strong>Host:</strong> 0.0.0.0</p>
-            <p><strong>Puerto:</strong> 8081</p>
-            <p><strong>Python:</strong> /home/phablet/.ubtool/venv/bin/python</p>
-        </div>
-        
-        <div class="info">
-            <h3>📋 App Information</h3>
-            <p><strong>App Name:</strong> test_micro</p>
-            <p><strong>App Path:</strong> /home/phablet/Apps/test_micro</p>
-            <p><strong>Debug Mode:</strong> True</p>
-            <p><strong>Created:</strong> with UBTool</p>
-        </div>
-        
-        <div class="info">
-            <h3>🔧 Available Endpoints</h3>
-            <p><code>GET /</code> - Main page</p>
-            <p><code>GET /api/status</code> - Status check</p>
-            <p><code>GET /api/info</code> - App information</p>
-        </div>
+<body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
+    <h1 style="color: #ff6b35;">🚀 {app_name}</h1>
+    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
+        <h2>✅ App Status: RUNNING</h2>
+        <p><strong>Framework:</strong> {framework}</p>
+        <p><strong>Host:</strong> {HOST}</p>
+        <p><strong>Puerto:</strong> {PORT}</p>
+        <p><strong>Python:</strong> {python_path}</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>📋 App Information</h3>
+        <p><strong>App Name:</strong> {app_name}</p>
+        <p><strong>App Path:</strong> {app_path}</p>
+        <p><strong>Debug Mode:</strong> {DEBUG}</p>
+        <p><strong>Created:</strong> with UBTool</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3>🔧 Available Endpoints</h3>
+        <p><code>GET /</code> - Main page</p>
+        <p><code>GET /api/status</code> - Status check</p>
+        <p><code>GET /api/info</code> - App information</p>
     </div>
 </body>
 </html>"""
     
-    return Response(html_content, headers={'Content-Type': 'text/html; charset=utf-8'})
+    return Response(html_content, headers={{'Content-Type': 'text/html; charset=utf-8'}})
 
 @app.route('/api/status')
 def api_status(request):
     """API status endpoint"""
-    return {
+    return {{
         'status': 'running',
-        'app': 'test_micro',
-        'framework': 'microdot',
-        'python_path': '/home/phablet/.ubtool/venv/bin/python',
-        'app_path': '/home/phablet/Apps/test_micro',
-        'port': 8081,
-        'debug': True,
-        'host': '0.0.0.0'
-    }
+        'app': '{app_name}',
+        'framework': '{framework}',
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
+        'port': {PORT},
+        'debug': {DEBUG},
+        'host': '{HOST}'
+    }}
 
 @app.route('/api/info')
 def api_info(request):
     """API info endpoint"""
-    return {
-        'app_name': 'test_micro',
-        'framework': 'microdot',
-        'python_path': '/home/phablet/.ubtool/venv/bin/python',
-        'app_path': '/home/phablet/Apps/test_micro',
+    return {{
+        'app_name': '{app_name}',
+        'framework': '{framework}',
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
         'description': 'App created with UBTool',
         'version': '1.0.0',
         'endpoints': ['/', '/api/status', '/api/info']
-    }
+    }}
 
 if __name__ == '__main__':
-    print("🚀 Starting test_micro on http://0.0.0.0:8081")
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
 
