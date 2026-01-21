@@ -1331,8 +1331,8 @@ def api_info(request):
     }}
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
-    app.run(host=HOST, port=port, debug=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
+    app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
 
 def get_flask_app_content(app_name, framework, app_path, python_path):
@@ -1419,8 +1419,8 @@ def api_info():
     })
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
-    app.run(host=HOST, port=port, debug=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
+    app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
 
 def get_fastapi_app_content(app_name, framework, app_path, python_path):
@@ -1511,8 +1511,8 @@ async def api_info():
     }
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
-    uvicorn.run(app, host=HOST, port=port, reload=DEBUG)
+    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
+    uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
 '''
 
 @app.route('/api/devtools/create_env', methods=['POST'])
@@ -2638,16 +2638,16 @@ def get_run_code(framework, host, port, debug):
     """Obtener código para correr la app según el framework"""
     if framework == 'flask':
         return f'''
-app.run(host=host, port=port, debug=debug)
+app.run(host=host, port=PORT, debug=debug)
 '''
     elif framework == 'microdot':
         return f'''
-app.run(host=host, port=port, debug=debug)
+app.run(host=host, port=PORT, debug=debug)
 '''
     elif framework == 'fastapi':
         return f'''
 import uvicorn
-uvicorn.run(app, host=host, port=port, debug=debug)
+uvicorn.run(app, host=host, port=PORT, debug=debug)
 '''
     return ''
 
