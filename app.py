@@ -1231,7 +1231,6 @@ Created with UBTool using {framework} framework
 """
 
 from microdot import Microdot
-import os
 
 app = Microdot()
 
@@ -1264,64 +1263,54 @@ def index(request):
         h1 {{
             color: #ff6b35;
             text-align: center;
+            font-size: 2.5rem;
         }}
         .status {{
             background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+            text-align: center;
+        }}
+        .info {{
+            background: rgba(255,255,255,0.05);
             padding: 1rem;
             border-radius: 8px;
             margin: 1rem 0;
         }}
-        .btn {{
-            background: #ff6b35;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-        }}
-        .btn:hover {{
-            background: #e55a2b;
+        .success {{
+            color: #4CAF50;
+            font-weight: bold;
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 {app_name}</h1>
+        
         <div class="status">
-            <h2>✅ App funcionando correctamente</h2>
+            <h2 class="success">✅ App Status: RUNNING</h2>
             <p><strong>Framework:</strong> {framework}</p>
+            <p><strong>Host:</strong> {HOST}</p>
             <p><strong>Puerto:</strong> {PORT}</p>
-            <p><strong>Ruta:</strong> {app_path}</p>
             <p><strong>Python:</strong> {python_path}</p>
         </div>
         
-        <div class="api-info">
-            <h2>API Endpoints</h2>
-            <ul>
-                <li><code>GET /</code> - Página principal</li>
-                <li><code>GET /api/status</code> - Estado del servidor</li>
-                <li><code>GET /api/info</code> - Información de la app</li>
-            </ul>
+        <div class="info">
+            <h3>📋 App Information</h3>
+            <p><strong>App Name:</strong> {app_name}</p>
+            <p><strong>App Path:</strong> {app_path}</p>
+            <p><strong>Debug Mode:</strong> {DEBUG}</p>
+            <p><strong>Created:</strong> with UBTool</p>
         </div>
         
-        <button class="btn" onclick="checkAPI()">Probar API</button>
-        <div id="api-result" style="margin-top: 20px;"></div>
+        <div class="info">
+            <h3>🔧 Available Endpoints</h3>
+            <p><code>GET /</code> - Main page</p>
+            <p><code>GET /api/status</code> - Status check</p>
+            <p><code>GET /api/info</code> - App information</p>
+        </div>
     </div>
-    
-    <script>
-        function checkAPI() {{
-            fetch('/api/status')
-                .then(function(response) {{ return response.json(); }})
-                .then(function(data) {{
-                    document.getElementById('api-result').innerHTML = 
-                        '<h3>API Response:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
-                }})
-                .catch(function(error) {{
-                    document.getElementById('api-result').innerHTML = 
-                        '<h3>Error:</h3><p>' + error.message + '</p>';
-                }});
-        }}
-    </script>
 </body>
 </html>"""
     
@@ -1334,13 +1323,11 @@ def api_status(request):
         'status': 'running',
         'app': '{app_name}',
         'framework': '{framework}',
-        'version': '1.0.0',
+        'python_path': '{python_path}',
+        'app_path': '{app_path}',
         'port': {PORT},
-        'endpoints': [
-            '/',
-            '/api/status',
-            '/api/info'
-        ]
+        'debug': {DEBUG},
+        'host': '{HOST}'
     }}
 
 @app.route('/api/info')
@@ -1352,12 +1339,8 @@ def api_info(request):
         'python_path': '{python_path}',
         'app_path': '{app_path}',
         'description': 'App created with UBTool',
-        'features': [
-            'Microdot framework',
-            'Simple HTML responses',
-            'REST API endpoints',
-            'No template dependencies'
-        ]
+        'version': '1.0.0',
+        'endpoints': ['/', '/api/status', '/api/info']
     }}
 
 if __name__ == '__main__':
