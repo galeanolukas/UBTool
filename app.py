@@ -1707,7 +1707,7 @@ document.addEventListener('DOMContentLoaded', function() {
         else:
             app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
         
-        # Create app.py using echo with proper escaping for JavaScript content
+        # Create app.py using echo with minimal escaping to avoid Python syntax issues
         commands.append(f"echo '#!/usr/bin/env python3' > {app_path}/app.py")
         
         # Split content into lines and write each line safely
@@ -1716,12 +1716,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if i == 0 and line.startswith('#!'):
                 continue  # Skip shebang as we already added it
             
-            # Escape problematic characters for shell
-            safe_line = line
-            safe_line = safe_line.replace('\\', '\\\\')  # Escape backslashes
-            safe_line = safe_line.replace('$', '\\$')    # Escape dollar signs
-            safe_line = safe_line.replace('`', '\\`')    # Escape backticks
-            safe_line = safe_line.replace('"', '\\"')    # Escape double quotes
+            # Only escape single quotes to break out of shell string
+            safe_line = line.replace("'", "'\"'\"'")
             
             commands.append(f"echo '{safe_line}' >> {app_path}/app.py")
         
