@@ -2091,16 +2091,20 @@ def start_web_app(request):
                 print(f"DEBUG: Found Process ID = {process_id}")
                 
                 # Crear archivos PID
-                port = 8081  # default
-                try:
-                    config_check = subprocess.run(['adb', 'shell', f'cat /home/phablet/Apps/{app_name}/config.py'], capture_output=True, text=True, timeout=3)
-                    if config_check.returncode == 0:
-                        for line in config_check.stdout.strip().split('\n'):
-                            if '=' in line and 'PORT' in line:
-                                port = int(line.split('=')[1].strip().strip('"\''))
-                                break
-                except:
-                    pass
+                # Obtener el puerto dinámico correcto
+                port = get_next_available_port()
+                print(f"DEBUG: Using dynamic port {port} for app {app_name}")
+                
+                # También guardar en config.py para referencia futura
+                config_content = f'''# App Configuration
+APP_NAME = "{app_name}"
+FRAMEWORK = "unknown"
+PORT = {port}
+HOST = "0.0.0.0"
+DEBUG = True
+'''
+                config_cmd = f"echo '{config_content}' > /home/phablet/Apps/{app_name}/config.py"
+                subprocess.run(['adb', 'shell', config_cmd], timeout=3)
                 
                 # Crear archivo PID
                 pid_info = f"""# App Process Information
