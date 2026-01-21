@@ -761,7 +761,6 @@ function createWebAppModal() {
                         data-i18n-placeholder="webapps.create.name_ph"
                         placeholder="mi_app" 
                         required
-                        pattern="[a-zA-Z][a-zA-Z0-9_-]*"
                         title="Debe comenzar con una letra y solo puede contener letras, números, guiones y guiones bajos"
                         style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid var(--ub-gray); color: var(--ub-light); padding: 0.75rem; border-radius: 6px; font-family: inherit;"
                     />
@@ -901,6 +900,13 @@ async function createWebApp(event) {
     const iconInput = document.getElementById('webapp-icon');
     const statusDiv = document.getElementById('webapp-create-status');
     const submitBtn = document.getElementById('create-webapp-btn');
+    
+    // Validate name with JavaScript instead of HTML pattern
+    const nameRegex = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
+    if (!nameRegex.test(name)) {
+        statusDiv.innerHTML = `<p style="color: #f44336;">❌ El nombre debe comenzar con una letra y solo puede contener letras, números, guiones y guiones bajos</p>`;
+        return;
+    }
     
     if (!name || !framework) {
         statusDiv.innerHTML = `<p style="color: #f44336;">❌ Por favor completa todos los campos requeridos</p>`;
