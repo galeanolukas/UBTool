@@ -1341,10 +1341,10 @@ def get_flask_app_content(app_name, framework, app_path, python_path):
     # Get dynamic port
     port = get_next_available_port()
     
-    return f'''#!/usr/bin/env python3
+    content = '''#!/usr/bin/env python3
 """
-{app_name} - Web Application
-Created with UBTool using {framework} framework
+''' + app_name + ''' - Web Application
+Created with UBTool using ''' + framework + ''' framework
 """
 
 from flask import Flask, render_template_string, jsonify
@@ -1352,16 +1352,16 @@ from flask import Flask, render_template_string, jsonify
 app = Flask(__name__)
 
 # Global variables for the app
-app_name = "{app_name}"
-framework = "{framework}"
-app_path = "{app_path}"
-python_path = "{python_path}"
-dynamic_port = {port}
+app_name = "''' + app_name + '''"
+framework = "''' + framework + '''"
+app_path = "''' + app_path + '''"
+python_path = "''' + python_path + '''"
+dynamic_port = ''' + str(port) + '''
 
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = {port}
+PORT = ''' + str(port) + '''
 
 @app.route('/')
 def index():
@@ -1430,35 +1430,36 @@ if __name__ == '__main__':
     print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
+    return content
 
 def get_fastapi_app_content(app_name, framework, app_path, python_path):
     """Generate FastAPI app.py content"""
     # Get dynamic port
     port = get_next_available_port()
     
-    return f'''#!/usr/bin/env python3
+    content = '''#!/usr/bin/env python3
 """
-{app_name} - Web Application
-Created with UBTool using {framework} framework
+''' + app_name + ''' - Web Application
+Created with UBTool using ''' + framework + ''' framework
 """
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-app = FastAPI(title=app_name)
+app = FastAPI(title=''' + app_name + ''')
 
 # Global variables for the app
-app_name = "{app_name}"
-framework = "{framework}"
-app_path = "{app_path}"
-python_path = "{python_path}"
-dynamic_port = {port}
+app_name = "''' + app_name + '''"
+framework = "''' + framework + '''"
+app_path = "''' + app_path + '''"
+python_path = "''' + python_path + '''"
+dynamic_port = ''' + str(port) + '''
 
 # Configuration
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = {port}
+PORT = ''' + str(port) + '''
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -1529,6 +1530,7 @@ if __name__ == '__main__':
     print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
     uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
 '''
+    return content
 
 @app.route('/api/devtools/create_env', methods=['POST'])
 def create_virtual_env(request):
