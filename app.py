@@ -1946,7 +1946,7 @@ def list_web_apps(request):
                                                 print(f"DEBUG: Could not parse port from API for app {app_name}")
                                                 # Intentar método alternativo con netstat
                                                 port_from_netstat = subprocess.run(
-                                                    ['adb', 'shell', f'netstat -tlnp 2>/dev/null | grep ":.*python.*{app_name}" | head -1 | awk "{{print \$4}}" | cut -d: -f2 || echo ""'],
+                                                    ['adb', 'shell', f'netstat -tlnp 2>/dev/null | grep ":.*python.*{app_name}" | head -1 | awk \'{{print $4}}\' | cut -d: -f2 || echo ""'],
                                                     capture_output=True, text=True, timeout=3
                                                 )
                                                 if port_from_netstat.returncode == 0 and port_from_netstat.stdout.strip():
