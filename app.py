@@ -1261,6 +1261,7 @@ app_name = "{app_name}"
 framework = "{framework}"
 app_path = "{app_path}"
 python_path = "{python_path}"
+dynamic_port = {port}
 
 # Configuration
 DEBUG = True
@@ -1282,7 +1283,7 @@ def index(request):
         <h2>✅ App Status: RUNNING</h2>
         <p><strong>Framework:</strong> """ + framework + """</p>
         <p><strong>Host:</strong> """ + HOST + """</p>
-        <p><strong>Puerto:</strong> """ + str(port) + """</p>
+        <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
         <p><strong>Python:</strong> """ + python_path + """</p>
     </div>
     <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
@@ -1312,7 +1313,7 @@ def api_status(request):
         'framework': framework,
         'python_path': python_path,
         'app_path': app_path,
-        'port': PORT,
+        'port': dynamic_port,
         'debug': DEBUG,
         'host': HOST
     }}
@@ -1349,6 +1350,13 @@ Created with UBTool using {framework} framework
 from flask import Flask, render_template_string, jsonify
 
 app = Flask(__name__)
+
+# Global variables for the app
+app_name = "{app_name}"
+framework = "{framework}"
+app_path = "{app_path}"
+python_path = "{python_path}"
+dynamic_port = {port}
 
 # Configuration
 DEBUG = True
@@ -1400,7 +1408,7 @@ def api_status():
         'framework': framework,
         'python_path': python_path,
         'app_path': app_path,
-        'port': port,
+        'port': dynamic_port,
         'debug': DEBUG,
         'host': HOST
     })
@@ -1439,6 +1447,13 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 app = FastAPI(title=app_name)
+
+# Global variables for the app
+app_name = "{app_name}"
+framework = "{framework}"
+app_path = "{app_path}"
+python_path = "{python_path}"
+dynamic_port = {port}
 
 # Configuration
 DEBUG = True
@@ -1491,7 +1506,7 @@ async def api_status():
         "framework": framework,
         "python_path": python_path,
         "app_path": app_path,
-        "port": port,
+        "port": dynamic_port,
         "debug": DEBUG,
         "host": HOST,
         "endpoints": ["/", "/api/status", "/api/info", "/docs"]
