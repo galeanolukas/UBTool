@@ -1479,7 +1479,7 @@ async def index():
 @app.get("/api/status")
 async def api_status():
     """API status endpoint"""
-    return {{
+    return {
         "status": "running",
         "app": "{app_name}",
         "framework": "{framework}",
@@ -1489,12 +1489,12 @@ async def api_status():
         "debug": {DEBUG},
         "host": "{HOST}",
         "endpoints": ["/", "/api/status", "/api/info", "/docs"]
-    }}
+    }
 
 @app.get("/api/info")
 async def api_info():
     """API info endpoint"""
-    return {{
+    return {
         "app_name": "{app_name}",
         "framework": "{framework}",
         "python_path": "{python_path}",
@@ -1502,7 +1502,7 @@ async def api_info():
         "description": "App created with UBTool",
         "version": "1.0.0",
         "endpoints": ["/", "/api/status", "/api/info", "/docs"]
-    }}
+    }
 
 if __name__ == '__main__':
     print(f"🚀 Starting {app_name} on http://{HOST}:{port}")
