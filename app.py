@@ -1707,20 +1707,10 @@ document.addEventListener('DOMContentLoaded', function() {
         else:
             app_py_content = get_microdot_app_content(app_name, framework, app_path, global_venv_python)
         
-        # Create app.py by writing each line separately to avoid shell escaping issues
-        # First clear the file
-        commands.append(f"echo '#!/usr/bin/env python3' > {app_path}/app.py")
-        
-        # Split content into lines and add each line (skip the shebang if present)
-        lines = app_py_content.split('\n')
-        for i, line in enumerate(lines):
-            if i == 0 and line.startswith('#!'):
-                continue  # Skip shebang as we already added it
-            # Escape single quotes in the line
-            escaped_line = line.replace("'", "'\"'\"'")
-            commands.append(f"echo '{escaped_line}' >> {app_path}/app.py")
-        
-        # Make it executable
+        # Create app.py using cat with here document to handle JavaScript content safely
+        commands.append(f"cat > {app_path}/app.py << 'EOF'")
+        commands.append(app_py_content)
+        commands.append("EOF")
         commands.append(f"chmod +x {app_path}/app.py")
         framework_packages = config.FRAMEWORK_PACKAGES.get(framework, [])
         if framework_packages:
