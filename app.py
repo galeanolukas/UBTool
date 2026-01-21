@@ -2107,10 +2107,12 @@ DEBUG = True
                 subprocess.run(['adb', 'shell', config_cmd], timeout=3)
                 
                 # Crear archivo PID
+                from datetime import datetime
+                current_time = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
                 pid_info = f"""# App Process Information
 PID={process_id}
 APP_NAME={app_name}
-START_TIME=$(date +%Y-%m-%d_%H:%M:%S)
+START_TIME={current_time}
 PYTHON_EXEC={python_executable}
 APP_DIR=/home/phablet/Apps/{app_name}
 PORT={port}
