@@ -1915,27 +1915,55 @@ def list_web_apps(request):
                         # Si está corriendo, obtener el puerto dinámico desde su API
                         if is_running:
                             try:
-                                # Intentar obtener el puerto desde el API endpoint de la app
-                                port_from_config = config.get('port', '8081')  # fallback al config
-                                
-                                # Hacer una petición al API status de la app para obtener el puerto real
-                                api_check = subprocess.run(
-                                    ['adb', 'shell', f'curl -s http://localhost:{port_from_config}/api/status 2>/dev/null | grep -o \'"port": [0-9]*\' | cut -d: -f2 | tr -d " " || echo "{port_from_config}"'],
+                                # Primero intentar obtener el puerto desde el archivo PID que contiene el puerto real
+                                port_from_pid = subprocess.run(
+                                    ['adb', 'shell', f'grep "^PORT=" /home/phablet/Apps/{app_name}/PID 2>/dev/null | cut -d"=" -f2 || echo ""'],
                                     capture_output=True, text=True, timeout=3
                                 )
                                 
-                                if api_check.returncode == 0 and api_check.stdout.strip():
+                                if port_from_pid.returncode == 0 and port_from_pid.stdout.strip():
                                     try:
-                                        dynamic_port = int(api_check.stdout.strip())
+                                        dynamic_port = int(port_from_pid.stdout.strip())
                                         config['port'] = str(dynamic_port)
-                                        print(f"DEBUG: Got dynamic port {dynamic_port} for app {app_name}")
+                                        print(f"DEBUG: Got dynamic port {dynamic_port} from PID file for app {app_name}")
                                     except ValueError:
-                                        print(f"DEBUG: Could not parse port for app {app_name}, using config")
-                                        config['port'] = port_from_config
+                                        print(f"DEBUG: Could not parse port from PID file for app {app_name}")
+                                        config['port'] = config.get('port', '8081')
                                 else:
-                                    # Si no se puede obtener del API, usar el del config
-                                    config['port'] = port_from_config
-                                    print(f"DEBUG: Could not get port from API for app {app_name}, using config {port_from_config}")
+                                        # Si no hay puerto en PID, intentar desde el API
+                                        port_from_config = config.get('port', '8081')
+                                        api_check = subprocess.run(
+                                            ['adb', 'shell', f'curl -s --max-time 2 http://localhost:{port_from_config}/api/status 2>/dev/null | grep -o \'"port": [0-9]*\' | head -1 | cut -d: -f2 | tr -d " " || echo ""'],
+                                            capture_output=True, text=True, timeout=5
+                                        )
+                                        
+                                        if api_check.returncode == 0 and api_check.stdout.strip():
+                                            try:
+                                                dynamic_port = int(api_check.stdout.strip())
+                                                config['port'] = str(dynamic_port)
+                                                print(f"DEBUG: Got dynamic port {dynamic_port} from API for app {app_name}")
+                                            except ValueError:
+                                                print(f"DEBUG: Could not parse port from API for app {app_name}")
+                                                # Intentar método alternativo con netstat
+                                                port_from_netstat = subprocess.run(
+                                                    ['adb', 'shell', f'netstat -tlnp 2>/dev/null | grep ":.*python.*{app_name}" | head -1 | awk "{{print \$4}}" | cut -d: -f2 || echo ""'],
+                                                    capture_output=True, text=True, timeout=3
+                                                )
+                                                if port_from_netstat.returncode == 0 and port_from_netstat.stdout.strip():
+                                                    try:
+                                                        netstat_port = int(port_from_netstat.stdout.strip())
+                                                        config['port'] = str(netstat_port)
+                                                        print(f"DEBUG: Got dynamic port {netstat_port} from netstat for app {app_name}")
+                                                    except ValueError:
+                                                        config['port'] = port_from_config
+                                                        print(f"DEBUG: Could not parse port from netstat for app {app_name}")
+                                                else:
+                                                    config['port'] = port_from_config
+                                                    print(f"DEBUG: Could not get port from netstat for app {app_name}, using config {port_from_config}")
+                                        else:
+                                            # Si no se puede obtener del API, usar el del config
+                                            config['port'] = port_from_config
+                                            print(f"DEBUG: Could not get port from API for app {app_name}, using config {port_from_config}")
                             except Exception as e:
                                 print(f"DEBUG: Error getting dynamic port for {app_name}: {e}")
                                 config['port'] = config.get('port', '8081')
