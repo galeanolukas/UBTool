@@ -418,6 +418,51 @@ async function startApp(appName) {
 
 async function stopApp(appName) {
     try {
+        showNotification(`🛑 Deteniendo app ${appName}...`, 'info');
+        
+        // Verificar si está en modo desarrollo y detener túnel
+        try {
+            const developResponse = await fetch(`/api/simple-develop/status`, {
+                method: 'GET'
+            });
+            
+            const developData = await parseJSONResponse(developResponse);
+            
+            if (developData.success && developData.data.active_tunnels) {
+                // Buscar si hay túnel para esta app usando el registro global
+                const tunnelRegistryResponse = await fetch('/api/simple-develop/registry', {
+                    method: 'GET'
+                });
+                
+                if (tunnelRegistryResponse.ok) {
+                    const registryData = await tunnelRegistryResponse.json();
+                    if (registryData.success && registryData.data.tunnels) {
+                        const tunnelForApp = registryData.data.tunnels.find(tunnel => tunnel.app_name === appName);
+                        
+                        if (tunnelForApp) {
+                            showNotification(`🔄 Deteniendo modo desarrollo para ${appName}...`, 'info');
+                            
+                            // Detener túnel específico de la app
+                            const stopDevelopResponse = await fetch(`/api/simple-develop/stop/${encodeURIComponent(appName)}`, {
+                                method: 'POST'
+                            });
+                            
+                            const stopDevelopData = await parseJSONResponse(stopDevelopResponse);
+                            if (stopDevelopData.success) {
+                                showNotification(`✅ ${stopDevelopData.message}`, 'success', 3000);
+                            } else {
+                                showNotification(`⚠️ ${stopDevelopData.error}`, 'warning', 3000);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (developError) {
+            // Si hay error verificando modo desarrollo, continuar con detención normal
+            console.log('No se pudo verificar modo desarrollo:', developError);
+        }
+        
+        // Ahora detener la app
         const response = await fetch('/api/devtools/stop_app', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -3150,6 +3150,10 @@ done
         echo_cmd = f"echo '{tunnel_data}' > /home/phablet/.ubtool/tunnels/{app_name}.tunnel"
         subprocess.run(['adb', 'shell', echo_cmd], timeout=5)
         
+        # También guardar en un registro global de túneles activos
+        tunnel_registry_cmd = f"echo '{app_name}:{local_port}:{device_port}' >> /home/phablet/.ubtool/tunnels/active_tunnels.txt"
+        subprocess.run(['adb', 'shell', tunnel_registry_cmd], timeout=5)
+        
         return {
             'success': True,
             'data': {
@@ -3219,6 +3223,48 @@ async def get_develop_status(request):
             'error': f'Error al verificar estado: {str(e)}'
         }
 
+@app.route('/api/simple-develop/registry', methods=['GET'])
+async def get_tunnel_registry(request):
+    """API: Obtener registro de túneles activos con nombres de apps"""
+    try:
+        # Leer el registro global de túneles activos
+        registry_cmd = "cat /home/phablet/.ubtool/tunnels/active_tunnels.txt 2>/dev/null || echo ''"
+        result = subprocess.run(['adb', 'shell', registry_cmd], timeout=5, capture_output=True, text=True)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            tunnels = []
+            for line in result.stdout.strip().split('\n'):
+                if line.strip():
+                    parts = line.strip().split(':')
+                    if len(parts) >= 3:
+                        tunnels.append({
+                            'app_name': parts[0],
+                            'local_port': parts[1],
+                            'device_port': parts[2]
+                        })
+            
+            return {
+                'success': True,
+                'data': {
+                    'tunnels': tunnels,
+                    'total_tunnels': len(tunnels)
+                }
+            }
+        else:
+            return {
+                'success': True,
+                'data': {
+                    'tunnels': [],
+                    'total_tunnels': 0
+                }
+            }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Error al obtener registro de túneles: {str(e)}'
+        }
+
 @app.route('/api/simple-develop/stop/<app_name>', methods=['POST'])
 async def stop_develop_mode(request, app_name):
     """API: Detener modo desarrollo para una app específica"""
@@ -3253,6 +3299,10 @@ async def stop_develop_mode(request, app_name):
         # Eliminar archivo de túnel
         delete_cmd = f"rm -f /home/phablet/.ubtool/tunnels/{app_name}.tunnel"
         subprocess.run(['adb', 'shell', delete_cmd], timeout=5)
+        
+        # Eliminar del registro global de túneles activos
+        remove_from_registry_cmd = f"sed -i '/^{app_name}:/d' /home/phablet/.ubtool/tunnels/active_tunnels.txt 2>/dev/null || true"
+        subprocess.run(['adb', 'shell', remove_from_registry_cmd], timeout=5)
         
         return {
             'success': True,
