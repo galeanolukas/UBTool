@@ -224,6 +224,20 @@ async function refreshAppsList() {
                                         </button>
                                     </div>
                                     <div class="w3-col s6" style="padding: 0.25rem;">
+                                        ${app.is_in_develop_mode ? 
+                                            `<button onclick="stopDevelopMode('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                    style="background: #f44336; color: white; padding: 0.5rem; font-size: 0.9rem; position: relative;">
+                                                🛑 Detener Túnel
+                                                <span style="position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; background: #f44336; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                                            </button>` :
+                                            `<button onclick="modoDesarrollo('${app.name}')" class="w3-btn w3-round-large w3-block" 
+                                                    style="background: #9C27B0; color: white; padding: 0.5rem; font-size: 0.9rem;" 
+                                                    ${app.is_running ? '' : 'disabled'}>
+                                                🛠️ Modo Desarrollo
+                                            </button>`
+                                        }
+                                    </div>
+                                    <div class="w3-col s6" style="padding: 0.25rem;">
                                         <button onclick="showDeleteModal('${app.name}')" class="w3-btn w3-round-large w3-block" 
                                                 style="background: ${app.is_running ? 'rgba(244,67,54,0.2)' : 'rgba(244,67,54,0.2)'}; color: #f44336; border: 1px solid #f44336; padding: 0.5rem;">
                                             🗑️ Eliminar
@@ -235,6 +249,10 @@ async function refreshAppsList() {
                                         <strong>PID:</strong> ${app.process_info.PID} | 
                                         <strong>Puerto:</strong> ${app.process_info.PORT || app.config.port || 'N/A'} |
                                         <strong>Estado:</strong> ${app.process_info.STATUS || 'unknown'}
+                                        ${app.is_in_develop_mode && app.tunnel_info.LOCAL_PORT ? 
+                                            `| <strong>Túnel:</strong> <a href="http://localhost:${app.tunnel_info.LOCAL_PORT}" target="_blank" style="color: var(--ub-orange); text-decoration: none;">localhost:${app.tunnel_info.LOCAL_PORT}</a>` : 
+                                            ''
+                                        }
                                     </div>
                                 ` : ''}
                             </div>
@@ -275,6 +293,103 @@ function getFrameworkIcon(framework) {
         'vue': '💚'
     };
     return icons[framework] || '📱';
+}
+
+async function modoDesarrollo(appName) {
+    try {
+        showNotification(`🛠️ Iniciando modo develop para ${appName}...`, 'info');
+        
+        const response = await fetch('/api/simple-develop/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                app_name: appName
+            })
+        });
+        
+        const data = await parseJSONResponse(response);
+        
+        if (data.success) {
+            let message = `✅ ${data.data.message}`;
+            
+            if (data.data.local_url) {
+                message += `\n\n🌐 Acceso local: ${data.data.local_url}`;
+                message += `\n🔗 Túnel: localhost:${data.data.local_port} → dispositivo:${data.data.device_port}`;
+                
+                // Abrir URL local automáticamente
+                setTimeout(() => {
+                    window.open(data.data.local_url, '_blank');
+                }, 1000);
+            }
+            
+            if (data.data.workspace) {
+                message += `\n\n📁 Workspace local: ${data.data.workspace.local_path}`;
+                message += `\n💡 Abre esta carpeta en tu IDE preferido`;
+                
+                if (data.data.sync_script) {
+                    message += `\n🔄 Script de sincronización: ${data.data.sync_script}`;
+                    message += `\n   Ejecuta: bash ${data.data.sync_script}`;
+                }
+                
+                // Guardar información del workspace para referencia
+                localStorage.setItem(`ubtool_workspace_${data.data.app_name}`, JSON.stringify(data.data.workspace));
+                localStorage.setItem(`ubtool_sync_script_${data.data.app_name}`, data.data.sync_script);
+                
+                // Mostrar instrucciones
+                setTimeout(() => {
+                    alert(`📋 Instrucciones de desarrollo:\n\n` +
+                          `1. Abre la carpeta del workspace en tu IDE:\n   ${data.data.workspace.local_path}\n\n` +
+                          `2. Edita los archivos que necesites\n\n` +
+                          `3. Para sincronizar cambios automáticamente:\n   bash ${data.data.sync_script}\n\n` +
+                          `4. O sincroniza manualmente con:\n   adb push "${data.data.workspace.local_path}/" "${data.data.workspace.device_path}/"\n\n` +
+                          `5. Tu app está disponible en: ${data.data.local_url}`);
+                }, 1500);
+            }
+            
+            showNotification(message, 'success', 12000);
+            
+            // Actualizar lista de apps para mostrar estado
+            setTimeout(() => {
+                refreshAppsList();
+            }, 2000);
+            
+        } else {
+            if (data.error && data.error.includes('no está corriendo')) {
+                showNotification(`⚠️ ${data.error}`, 'warning', 6000);
+                showNotification(`💡 Por favor, inicia la app "${appName}" primero con el botón "▶️ Iniciar"`, 'info', 8000);
+            } else {
+                showNotification(`❌ Error al iniciar modo develop: ${data.error}`, 'error', 6000);
+            }
+        }
+    } catch (error) {
+        showNotification(`❌ Error de conexión: ${error.message}`, 'error', 6000);
+    }
+}
+
+async function stopDevelopMode(appName) {
+    try {
+        showNotification(`🛑 Deteniendo modo develop para ${appName}...`, 'info');
+        
+        const response = await fetch(`/api/simple-develop/stop/${encodeURIComponent(appName)}`, {
+            method: 'POST'
+        });
+        
+        const data = await parseJSONResponse(response);
+        
+        if (data.success) {
+            showNotification(data.message, 'success', 5000);
+            
+            // Actualizar lista de apps
+            setTimeout(() => {
+                refreshAppsList();
+            }, 1500);
+            
+        } else {
+            showNotification(`❌ Error al detener túnel: ${data.error}`, 'error', 6000);
+        }
+    } catch (error) {
+        showNotification(`❌ Error de conexión: ${error.message}`, 'error', 6000);
+    }
 }
 
 async function startApp(appName) {
@@ -368,7 +483,7 @@ async function confirmDelete() {
     }
 }
 
-function showNotification(message, type) {
+function showNotification(message, type, duration = 3000) {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = 'w3-card w3-round-large';
@@ -379,7 +494,7 @@ function showNotification(message, type) {
         padding: 1rem 1.5rem;
         z-index: 2000;
         min-width: 300px;
-        animation: slideIn 0.3s ease;
+        animation: slideIn 0.3s ease-out;
     `;
     
     // Set color based on type

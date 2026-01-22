@@ -1242,8 +1242,6 @@ def get_next_available_port():
 
 def get_microdot_app_content(app_name, framework, app_path, python_path):
     """Generate Microdot app.py content"""
-    # Get dynamic port
-    port = get_next_available_port()
     
     return f'''#!/usr/bin/env python3
 """
@@ -1253,6 +1251,8 @@ Created with UBTool using {framework} framework
 
 from microdot import Microdot
 from microdot import Response
+import sys
+import os
 
 app = Microdot()
 
@@ -1261,12 +1261,20 @@ app_name = "{app_name}"
 framework = "{framework}"
 app_path = "{app_path}"
 python_path = "{python_path}"
-dynamic_port = {port}
 
-# Configuration
+# Configuration - Use dynamic port from command line or default
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = {port}
+# Get port from command line argument or use default
+if len(sys.argv) > 1:
+    try:
+        PORT = int(sys.argv[1])
+    except ValueError:
+        PORT = 8080
+else:
+    PORT = 8080
+
+dynamic_port = PORT
 
 @app.route('/')
 def index(request):
@@ -1338,8 +1346,6 @@ if __name__ == '__main__':
 
 def get_flask_app_content(app_name, framework, app_path, python_path):
     """Generate Flask app.py content"""
-    # Get dynamic port
-    port = get_next_available_port()
     
     content = '''#!/usr/bin/env python3
 """
@@ -1348,6 +1354,7 @@ Created with UBTool using ''' + framework + ''' framework
 """
 
 from flask import Flask, render_template_string, jsonify
+import sys
 
 app = Flask(__name__)
 
@@ -1356,12 +1363,20 @@ app_name = "''' + app_name + '''"
 framework = "''' + framework + '''"
 app_path = "''' + app_path + '''"
 python_path = "''' + python_path + '''"
-dynamic_port = ''' + str(port) + '''
 
-# Configuration
+# Configuration - Use dynamic port from command line or default
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = ''' + str(port) + '''
+# Get port from command line argument or use default
+if len(sys.argv) > 1:
+    try:
+        PORT = int(sys.argv[1])
+    except ValueError:
+        PORT = 8080
+else:
+    PORT = 8080
+
+dynamic_port = PORT
 
 @app.route('/')
 def index():
@@ -1434,8 +1449,6 @@ if __name__ == '__main__':
 
 def get_fastapi_app_content(app_name, framework, app_path, python_path):
     """Generate FastAPI app.py content"""
-    # Get dynamic port
-    port = get_next_available_port()
     
     content = '''#!/usr/bin/env python3
 """
@@ -1446,20 +1459,29 @@ Created with UBTool using ''' + framework + ''' framework
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 import uvicorn
+import sys
 
-app = FastAPI(title=''' + app_name + ''')
+app = FastAPI()
 
 # Global variables for the app
 app_name = "''' + app_name + '''"
 framework = "''' + framework + '''"
 app_path = "''' + app_path + '''"
 python_path = "''' + python_path + '''"
-dynamic_port = ''' + str(port) + '''
 
-# Configuration
+# Configuration - Use dynamic port from command line or default
 DEBUG = True
 HOST = '0.0.0.0'
-PORT = ''' + str(port) + '''
+# Get port from command line argument or use default
+if len(sys.argv) > 1:
+    try:
+        PORT = int(sys.argv[1])
+    except ValueError:
+        PORT = 8080
+else:
+    PORT = 8080
+
+dynamic_port = PORT
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -1747,7 +1769,7 @@ document.addEventListener('DOMContentLoaded', function() {
         # Create app.py using adb push method
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False, suffix='.py') as temp_file:
-            temp_file.write(get_microdot_app_content(app_name, framework, app_path, global_venv_python).encode('utf-8'))
+            temp_file.write(app_py_content.encode('utf-8'))
             temp_file_path = temp_file.name
         
         # Push the file to device
@@ -1968,6 +1990,33 @@ def list_web_apps(request):
                                 print(f"DEBUG: Error getting dynamic port for {app_name}: {e}")
                                 config['port'] = config.get('port', '8081')
                 
+                # Verificar si hay un túnel activo para esta app
+                is_in_develop_mode = False
+                tunnel_info = {}
+                
+                tunnel_check = subprocess.run(
+                    ['adb', 'shell', f'test -f /home/phablet/.ubtool/tunnels/{app_name}.tunnel && cat /home/phablet/.ubtool/tunnels/{app_name}.tunnel || echo ""'],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                if tunnel_check.returncode == 0 and tunnel_check.stdout.strip():
+                    # Parsear información del túnel
+                    for line in tunnel_check.stdout.strip().split('\n'):
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            tunnel_info[key.strip()] = value.strip().strip('"\'')
+                    
+                    # Verificar que el túnel esté realmente activo usando adb forward --list
+                    reverse_list = subprocess.run(
+                        ['adb', 'shell', 'adb forward --list 2>/dev/null || echo ""'],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    
+                    if reverse_list.returncode == 0 and tunnel_info.get('LOCAL_PORT'):
+                        expected_tunnel = f"tcp:{tunnel_info['LOCAL_PORT']} tcp:{tunnel_info.get('DEVICE_PORT', '')}"
+                        if expected_tunnel in reverse_list.stdout:
+                            is_in_develop_mode = True
+                
                 apps.append({
                     'name': app_name,
                     'has_venv': venv_check.stdout.strip() == 'yes',
@@ -1975,7 +2024,9 @@ def list_web_apps(request):
                     'path': f'/home/phablet/Apps/{app_name}',
                     'global_venv': '/home/phablet/.ubtool/venv',
                     'is_running': is_running,
-                    'process_info': process_info
+                    'process_info': process_info,
+                    'is_in_develop_mode': is_in_develop_mode,
+                    'tunnel_info': tunnel_info
                 })
         
         return json.dumps({
@@ -2063,8 +2114,12 @@ def start_web_app(request):
         # Determinar el ejecutable de Python
         python_executable = "/home/phablet/.ubtool/venv/bin/python"
         
-        # Iniciar app en segundo plano - no esperar respuesta
-        start_cmd = f"cd /home/phablet/Apps/{app_name} && nohup {python_executable} app.py > app.log 2>&1 &"
+        # Obtener el puerto dinámico ANTES de iniciar la app
+        port = get_next_available_port()
+        print(f"DEBUG: Using dynamic port {port} for app {app_name}")
+        
+        # Iniciar app en segundo plano con el puerto dinámico como argumento
+        start_cmd = f"cd /home/phablet/Apps/{app_name} && nohup {python_executable} app.py {port} > app.log 2>&1 &"
         print(f"DEBUG: Running start_cmd: {start_cmd}")
         
         # Ejecutar en background sin esperar respuesta
@@ -2090,11 +2145,7 @@ def start_web_app(request):
                 process_id = find_result.stdout.strip()
                 print(f"DEBUG: Found Process ID = {process_id}")
                 
-                # Crear archivos PID
-                # Obtener el puerto dinámico correcto
-                port = get_next_available_port()
-                print(f"DEBUG: Using dynamic port {port} for app {app_name}")
-                
+                # Crear archivos PID usando el puerto ya calculado
                 # También guardar en config.py para referencia futura
                 config_content = f'''# App Configuration
 APP_NAME = "{app_name}"
@@ -2903,6 +2954,316 @@ async def reboot_device(request):
     """API: Reiniciar dispositivo"""
     result = adb_manager.reboot_device()
     return result
+
+@app.route('/api/simple-develop/start', methods=['POST'])
+async def start_develop_mode(request):
+    """API: Iniciar modo desarrollo con túnel para app web"""
+    try:
+        data = request.json or {}
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return {
+                'success': False,
+                'error': 'Nombre de app requerido'
+            }
+        
+        # Verificar que el dispositivo está conectado
+        if not adb_manager.is_available():
+            return {
+                'success': False,
+                'error': 'Dispositivo no conectado via ADB'
+            }
+        
+        # Verificar que la app está corriendo
+        check_cmd = f"test -f /home/phablet/Apps/{app_name}/PID"
+        check_result = subprocess.run(['adb', 'shell', check_cmd], timeout=5, capture_output=True)
+        
+        if check_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'La app "{app_name}" no está corriendo. Iníciala primero con el botón "▶️ Iniciar"'
+            }
+        
+        # Obtener el puerto de la app desde el archivo PID
+        port_cmd = f"grep '^PORT=' /home/phablet/Apps/{app_name}/PID | cut -d'=' -f2"
+        port_result = subprocess.run(['adb', 'shell', port_cmd], timeout=5, capture_output=True, text=True)
+        
+        if port_result.returncode != 0 or not port_result.stdout.strip():
+            return {
+                'success': False,
+                'error': 'No se pudo determinar el puerto de la app'
+            }
+        
+        device_port = port_result.stdout.strip()
+        
+        # Validar que sea un puerto válido
+        try:
+            device_port = int(device_port)
+            if device_port < 1 or device_port > 65535:
+                raise ValueError()
+        except ValueError:
+            return {
+                'success': False,
+                'error': f'Puerto inválido: {device_port}'
+            }
+        
+        # Elegir un puerto local disponible (empezando desde 3000)
+        local_port = 3000
+        max_attempts = 50
+        
+        for attempt in range(max_attempts):
+            try:
+                # Verificar si el puerto local está disponible
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                result = sock.connect_ex(('localhost', local_port))
+                sock.close()
+                
+                if result != 0:  # Puerto disponible
+                    break
+                local_port += 1
+            except:
+                local_port += 1
+        else:
+            return {
+                'success': False,
+                'error': 'No se pudo encontrar un puerto local disponible'
+            }
+        
+        # Limpiar túneles existentes para esta app
+        cleanup_cmd = f"adb forward --remove tcp:{local_port}"
+        subprocess.run(cleanup_cmd.split(), timeout=5, capture_output=True)
+        
+        # Crear el túnel usando ADB forward (más compatible que reverse)
+        tunnel_cmd = f"adb forward tcp:{local_port} tcp:{device_port}"
+        tunnel_result = subprocess.run(tunnel_cmd.split(), timeout=10, capture_output=True)
+        
+        if tunnel_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'Error al crear túnel: {tunnel_result.stderr.decode()}'
+            }
+        
+        # Verificar que el túnel funciona usando netcat
+        try:
+            # Usar netcat para verificar conexión local
+            test_cmd = f"echo -e 'GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' | nc localhost {local_port} | head -n 1"
+            test_result = subprocess.run(test_cmd, shell=True, timeout=5, capture_output=True, text=True)
+            
+            # Considerar éxito si hay alguna respuesta o conexión establecida
+            tunnel_working = test_result.returncode == 0 or 'HTTP' in test_result.stdout or test_result.stdout.strip()
+            
+            if not tunnel_working:
+                # Intentar verificación básica de conexión
+                connect_cmd = f"nc -z localhost {local_port}"
+                connect_result = subprocess.run(connect_cmd, shell=True, timeout=3)
+                tunnel_working = connect_result.returncode == 0
+                
+        except Exception as e:
+            print(f"DEBUG: Error verificando túnel: {e}")
+            tunnel_working = False
+        
+        if not tunnel_working:
+            # Limpiar túnel si no funciona
+            subprocess.run(f"adb forward --remove tcp:{local_port}".split(), timeout=5)
+            return {
+                'success': False,
+                'error': 'El túnel se creó pero no hay respuesta del servidor. Verifica que la app esté funcionando correctamente.'
+            }
+        
+        # Guardar información del túnel en un archivo temporal
+        tunnel_info = {
+            'app_name': app_name,
+            'device_port': device_port,
+            'local_port': local_port,
+            'start_time': subprocess.run(['date', '+%Y-%m-%d_%H:%M:%S'], capture_output=True, text=True).stdout.strip()
+        }
+        
+        # Crear workspace local sincronizado
+        import tempfile
+        import shutil
+        import time
+        workspace_path = f"/tmp/ubtool_workspace_{app_name}_{int(time.time())}"
+        
+        try:
+            # Crear directorio de trabajo local
+            os.makedirs(workspace_path, exist_ok=True)
+            
+            # Copiar archivos de la app desde el dispositivo
+            copy_cmd = f"adb pull /home/phablet/Apps/{app_name}/ {workspace_path}/"
+            copy_result = subprocess.run(copy_cmd.split(), timeout=30, capture_output=True)
+            
+            if copy_result.returncode != 0:
+                print(f"Warning: Could not copy app files: {copy_result.stderr}")
+            else:
+                print(f"DEBUG: App files copied to {workspace_path}")
+                
+                # Guardar información del workspace
+                workspace_info = {
+                    'local_path': workspace_path,
+                    'device_path': f'/home/phablet/Apps/{app_name}',
+                    'app_name': app_name,
+                    'sync_enabled': True
+                }
+                
+                # Crear archivo de configuración del workspace
+                with open(f"{workspace_path}/.ubtool_workspace", 'w') as f:
+                    import json
+                    json.dump(workspace_info, f, indent=2)
+                
+                # Agregar comando de sincronización automática
+                sync_script = f'''#!/bin/bash
+# Auto-sync script for {app_name}
+WORKSPACE="{workspace_path}"
+DEVICE_PATH="/home/phablet/Apps/{app_name}"
+
+echo "🔄 Starting auto-sync for {app_name}..."
+echo "📁 Local workspace: $WORKSPACE"
+echo "📱 Device path: $DEVICE_PATH"
+
+# Watch for changes and sync automatically
+while true; do
+    # Push changes to device
+    adb push "$WORKSPACE/"* "$DEVICE_PATH/" 2>/dev/null
+    echo "✅ Synced changes to device ($(date))"
+    sleep 2
+done
+'''
+                
+                with open(f"{workspace_path}/sync.sh", 'w') as f:
+                    f.write(sync_script)
+                
+                os.chmod(f"{workspace_path}/sync.sh", 0o755)
+                
+                tunnel_info['workspace'] = workspace_info
+                tunnel_info['sync_script'] = f"{workspace_path}/sync.sh"
+                
+        except Exception as e:
+            print(f"DEBUG: Error creating workspace: {e}")
+        
+        # Crear directorio para túneles si no existe
+        subprocess.run(['adb', 'shell', 'mkdir -p /home/phablet/.ubtool/tunnels'], timeout=5)
+        
+        # Guardar información del túnel en el dispositivo
+        tunnel_data = f"APP_NAME={app_name}\nDEVICE_PORT={device_port}\nLOCAL_PORT={local_port}\nSTART_TIME={tunnel_info['start_time']}\nSTATUS=active"
+        echo_cmd = f"echo '{tunnel_data}' > /home/phablet/.ubtool/tunnels/{app_name}.tunnel"
+        subprocess.run(['adb', 'shell', echo_cmd], timeout=5)
+        
+        return {
+            'success': True,
+            'data': {
+                'app_name': app_name,
+                'device_port': device_port,
+                'local_port': local_port,
+                'local_url': f"http://localhost:{local_port}",
+                'workspace': tunnel_info.get('workspace'),
+                'sync_script': tunnel_info.get('sync_script'),
+                'message': f'✅ Túnel creado exitosamente. Accede a tu app en http://localhost:{local_port}'
+            }
+        }
+        
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'error': 'Timeout al ejecutar comando ADB'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Error inesperado: {str(e)}'
+        }
+
+@app.route('/api/simple-develop/status', methods=['GET'])
+async def get_develop_status(request):
+    """API: Obtener estado del modo desarrollo"""
+    try:
+        # Listar túneles activos
+        list_cmd = "adb forward --list"
+        result = subprocess.run(list_cmd.split(), timeout=5, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            tunnels = []
+            for line in result.stdout.strip().split('\n'):
+                if line.strip() and 'tcp:' in line:
+                    # Parsear línea como: tcp:3000 tcp:8081
+                    parts = line.split()
+                    if len(parts) == 2:
+                        local_port = parts[0].replace('tcp:', '')
+                        device_port = parts[1].replace('tcp:', '')
+                        tunnels.append({
+                            'local_port': local_port,
+                            'device_port': device_port,
+                            'local_url': f"http://localhost:{local_port}"
+                        })
+            
+            return {
+                'success': True,
+                'data': {
+                    'active_tunnels': tunnels,
+                    'total_tunnels': len(tunnels)
+                }
+            }
+        else:
+            return {
+                'success': True,
+                'data': {
+                    'active_tunnels': [],
+                    'total_tunnels': 0
+                }
+            }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Error al verificar estado: {str(e)}'
+        }
+
+@app.route('/api/simple-develop/stop/<app_name>', methods=['POST'])
+async def stop_develop_mode(request, app_name):
+    """API: Detener modo desarrollo para una app específica"""
+    try:
+        # Obtener información del túnel
+        tunnel_info_cmd = f"test -f /home/phablet/.ubtool/tunnels/{app_name}.tunnel && cat /home/phablet/.ubtool/tunnels/{app_name}.tunnel"
+        result = subprocess.run(['adb', 'shell', tunnel_info_cmd], timeout=5, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'No se encontró túnel activo para la app "{app_name}"'
+            }
+        
+        # Extraer puerto local del archivo de túnel
+        local_port = None
+        for line in result.stdout.strip().split('\n'):
+            if line.startswith('LOCAL_PORT='):
+                local_port = line.split('=', 1)[1]
+                break
+        
+        if not local_port:
+            return {
+                'success': False,
+                'error': 'No se pudo determinar el puerto local del túnel'
+            }
+        
+        # Remover el túnel
+        remove_cmd = f"adb forward --remove tcp:{local_port}"
+        subprocess.run(remove_cmd.split(), timeout=5, capture_output=True)
+        
+        # Eliminar archivo de túnel
+        delete_cmd = f"rm -f /home/phablet/.ubtool/tunnels/{app_name}.tunnel"
+        subprocess.run(['adb', 'shell', delete_cmd], timeout=5)
+        
+        return {
+            'success': True,
+            'message': f'✅ Túnel para "{app_name}" detenido exitosamente'
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Error al detener túnel: {str(e)}'
+        }
 
 @app.route('/api/adb/status')
 async def adb_status(request):
