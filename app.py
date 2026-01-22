@@ -3085,11 +3085,11 @@ async def start_develop_mode(request):
         import shutil
         import time
         import platform
+        import os
         
         # Determinar directorio temporal según el sistema operativo
         if platform.system() == 'Windows':
             # En Windows usar %TEMP% o C:\temp
-            import os
             temp_dir = os.environ.get('TEMP', 'C:\\temp')
             workspace_path = os.path.join(temp_dir, f'ubtool_workspace_{app_name}_{int(time.time())}')
         else:
@@ -3099,16 +3099,48 @@ async def start_develop_mode(request):
         try:
             # Crear directorio de trabajo local
             os.makedirs(workspace_path, exist_ok=True)
+            print(f"✅ Workspace directory created: {workspace_path}")
             
             # Copiar archivos de la app desde el dispositivo
             copy_cmd = f"adb pull /home/phablet/Apps/{app_name}/ {workspace_path}/"
-            copy_result = subprocess.run(copy_cmd.split(), timeout=30, capture_output=True)
+            print(f"🔄 Copying app files: {copy_cmd}")
+            copy_result = subprocess.run(copy_cmd.split(), timeout=30, capture_output=True, text=True)
             
+            print(f"📋 ADB pull result: {copy_result.returncode}")
+            if copy_result.stdout:
+                print(f"📤 STDOUT: {copy_result.stdout.strip()}")
+            if copy_result.stderr:
+                print(f"⚠️ STDERR: {copy_result.stderr.strip()}")
+            
+            # Verificar si al menos algunos archivos se copiaron exitosamente
             if copy_result.returncode != 0:
-                print(f"Warning: Could not copy app files: {copy_result.stderr}")
+                # Verificar si el directorio de workspace tiene contenido
+                if os.path.exists(workspace_path) and os.listdir(workspace_path):
+                    print(f"⚠️ WARNING: Some files could not be copied, but workspace was created with partial content")
+                    print(f"📁 Workspace contents: {os.listdir(workspace_path)}")
+                else:
+                    print(f"❌ ERROR: Could not copy app files from device")
+                    print(f"   Command: {copy_cmd}")
+                    print(f"   Error: {copy_result.stderr}")
+                    # No continuar si no se pueden copiar ningún archivo
+                    return tunnel_info
             else:
-                print(f"DEBUG: App files copied to {workspace_path}")
+                print(f"✅ App files copied to {workspace_path}")
+            
+            # Continuar si tenemos al menos un directorio o archivo en el workspace
+            if os.path.exists(workspace_path):
+                workspace_items = []
+                try:
+                    workspace_items = os.listdir(workspace_path)
+                except PermissionError:
+                    print(f"⚠️ WARNING: Cannot access workspace directory")
+                    return tunnel_info
                 
+                if workspace_items:
+                    print(f"✅ Workspace contains content, proceeding with setup...")
+                else:
+                    print(f"⚠️ WARNING: Workspace is empty, but proceeding anyway...")
+                    
                 # Guardar información del workspace
                 workspace_info = {
                     'local_path': workspace_path,
@@ -3118,9 +3150,14 @@ async def start_develop_mode(request):
                 }
                 
                 # Crear archivo de configuración del workspace
-                with open(f"{workspace_path}/.ubtool_workspace", 'w') as f:
-                    import json
-                    json.dump(workspace_info, f, indent=2)
+                config_file = f"{workspace_path}/.ubtool_workspace"
+                try:
+                    with open(config_file, 'w') as f:
+                        import json
+                        json.dump(workspace_info, f, indent=2)
+                    print(f"✅ Workspace config created: {config_file}")
+                except Exception as config_e:
+                    print(f"❌ ERROR creating config file: {config_e}")
                 
                 # Agregar comando de sincronización automática compatible con Windows/Linux/Mac
                 if platform.system() == 'Windows':
@@ -3161,19 +3198,32 @@ done
                 
                 # Determinar nombre del script según el sistema operativo
                 script_name = 'sync.bat' if platform.system() == 'Windows' else 'sync.sh'
+                script_path = f"{workspace_path}/{script_name}"
                 
-                with open(f"{workspace_path}/{script_name}", 'w') as f:
-                    f.write(sync_script)
-                
-                # Asignar permisos ejecutables (solo en Linux/Mac)
-                if platform.system() != 'Windows':
-                    os.chmod(f"{workspace_path}/{script_name}", 0o755)
+                try:
+                    with open(script_path, 'w') as f:
+                        f.write(sync_script)
+                    print(f"✅ Sync script created: {script_path}")
+                    
+                    # Asignar permisos ejecutables (solo en Linux/Mac)
+                    if platform.system() != 'Windows':
+                        os.chmod(script_path, 0o755)
+                        print(f"✅ Made sync script executable")
+                except Exception as script_e:
+                    print(f"❌ ERROR creating sync script: {script_e}")
                 
                 tunnel_info['workspace'] = workspace_info
-                tunnel_info['sync_script'] = f"{workspace_path}/{script_name}"
+                tunnel_info['sync_script'] = script_path
+            else:
+                print(f"❌ ERROR: Workspace directory does not exist")
+                return tunnel_info
                 
         except Exception as e:
-            print(f"DEBUG: Error creating workspace: {e}")
+            print(f"❌ CRITICAL ERROR creating workspace: {e}")
+            print(f"   Workspace path: {workspace_path}")
+            print(f"   Error type: {type(e).__name__}")
+            import traceback
+            print(f"   Traceback: {traceback.format_exc()}")
         
         # Crear directorio para túneles si no existe
         subprocess.run(['adb', 'shell', 'mkdir -p /home/phablet/.ubtool/tunnels'], timeout=5)
