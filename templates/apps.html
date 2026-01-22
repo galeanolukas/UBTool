@@ -331,10 +331,15 @@ async function modoDesarrollo(appName) {
                 
                 // Mostrar instrucciones
                 setTimeout(() => {
+                    const isWindows = navigator.platform.indexOf('Win') !== -1;
+                    const syncCommand = isWindows ? 
+                        `sync.bat` : 
+                        `bash ${data.data.sync_script}`;
+                    
                     alert(`📋 Instrucciones de desarrollo:\n\n` +
                           `1. Abre la carpeta del workspace en tu IDE:\n   ${data.data.workspace.local_path}\n\n` +
                           `2. Edita los archivos que necesites\n\n` +
-                          `3. Para sincronizar cambios automáticamente:\n   bash ${data.data.sync_script}\n\n` +
+                          `3. Para sincronizar cambios automáticamente:\n   ${syncCommand}\n\n` +
                           `4. O sincroniza manualmente con:\n   adb push "${data.data.workspace.local_path}/" "${data.data.workspace.device_path}/"\n\n` +
                           `5. Tu app está disponible en: ${data.data.local_url}`);
                 }, 1500);

@@ -3080,11 +3080,21 @@ async def start_develop_mode(request):
             'start_time': subprocess.run(['date', '+%Y-%m-%d_%H:%M:%S'], capture_output=True, text=True).stdout.strip()
         }
         
-        # Crear workspace local sincronizado
+        # Crear workspace local sincronizado compatible con Windows/Linux/Mac
         import tempfile
         import shutil
         import time
-        workspace_path = f"/tmp/ubtool_workspace_{app_name}_{int(time.time())}"
+        import platform
+        
+        # Determinar directorio temporal según el sistema operativo
+        if platform.system() == 'Windows':
+            # En Windows usar %TEMP% o C:\temp
+            import os
+            temp_dir = os.environ.get('TEMP', 'C:\\temp')
+            workspace_path = os.path.join(temp_dir, f'ubtool_workspace_{app_name}_{int(time.time())}')
+        else:
+            # En Linux/Mac usar /tmp
+            workspace_path = f"/tmp/ubtool_workspace_{app_name}_{int(time.time())}"
         
         try:
             # Crear directorio de trabajo local
@@ -3112,8 +3122,26 @@ async def start_develop_mode(request):
                     import json
                     json.dump(workspace_info, f, indent=2)
                 
-                # Agregar comando de sincronización automática
-                sync_script = f'''#!/bin/bash
+                # Agregar comando de sincronización automática compatible con Windows/Linux/Mac
+                if platform.system() == 'Windows':
+                    sync_script = f'''@echo off
+REM Auto-sync script for {app_name}
+set WORKSPACE="{workspace_path}"
+set DEVICE_PATH="/home/phablet/Apps/{app_name}"
+
+echo 🔄 Starting auto-sync for {app_name}...
+echo 📁 Local workspace: %WORKSPACE%
+echo 📱 Device path: %DEVICE_PATH%
+
+:loop
+REM Push changes to device
+adb push "%WORKSPACE%\\*" "%DEVICE_PATH%/" 2>nul
+echo ✅ Synced changes to device (%date% %time%)
+timeout /t 2 >nul
+goto loop
+'''
+                else:
+                    sync_script = f'''#!/bin/bash
 # Auto-sync script for {app_name}
 WORKSPACE="{workspace_path}"
 DEVICE_PATH="/home/phablet/Apps/{app_name}"
@@ -3131,13 +3159,18 @@ while true; do
 done
 '''
                 
-                with open(f"{workspace_path}/sync.sh", 'w') as f:
+                # Determinar nombre del script según el sistema operativo
+                script_name = 'sync.bat' if platform.system() == 'Windows' else 'sync.sh'
+                
+                with open(f"{workspace_path}/{script_name}", 'w') as f:
                     f.write(sync_script)
                 
-                os.chmod(f"{workspace_path}/sync.sh", 0o755)
+                # Asignar permisos ejecutables (solo en Linux/Mac)
+                if platform.system() != 'Windows':
+                    os.chmod(f"{workspace_path}/{script_name}", 0o755)
                 
                 tunnel_info['workspace'] = workspace_info
-                tunnel_info['sync_script'] = f"{workspace_path}/sync.sh"
+                tunnel_info['sync_script'] = f"{workspace_path}/{script_name}"
                 
         except Exception as e:
             print(f"DEBUG: Error creating workspace: {e}")
