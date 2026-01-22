@@ -1907,7 +1907,13 @@ def list_web_apps(request):
                     )
                     is_running = process_check.stdout.strip() == 'running'
                     
-                    if is_running:
+                    # Si el proceso no está corriendo, limpiar archivos PID huérfanos
+                    if not is_running:
+                        print(f"🧹 Cleaning up orphaned PID files for {app_name}")
+                        cleanup_cmd = f"rm -f /home/phablet/Apps/{app_name}/PID /home/phablet/Apps/{app_name}/app.pid"
+                        subprocess.run(['adb', 'shell', cleanup_cmd], timeout=5)
+                        is_running = False
+                    else:
                         # Obtener información adicional del archivo PID
                         status_check = subprocess.run(
                             ['adb', 'shell', f'cat /home/phablet/Apps/{app_name}/PID 2>/dev/null || echo ""'],
@@ -2104,6 +2110,13 @@ def start_web_app(request):
                     capture_output=True, text=True, timeout=5
                 )
                 is_running = process_check.stdout.strip() == 'running'
+        
+        # Si se encontró PID pero el proceso no está corriendo, limpiar archivos huérfanos
+        if (pid_check.stdout.strip() or simple_pid_check.stdout.strip()) and not is_running:
+            print(f"🧹 Cleaning up orphaned PID files for {app_name} (stop check)")
+            cleanup_cmd = f"rm -f /home/phablet/Apps/{app_name}/PID /home/phablet/Apps/{app_name}/app.pid"
+            subprocess.run(['adb', 'shell', cleanup_cmd], timeout=5)
+            is_running = False
         
         if is_running:
             return json.dumps({
@@ -2958,6 +2971,11 @@ async def reboot_device(request):
 @app.route('/api/simple-develop/start', methods=['POST'])
 async def start_develop_mode(request):
     """API: Iniciar modo desarrollo con túnel para app web"""
+    import subprocess
+    import os
+    import time
+    import platform
+    
     try:
         data = request.json or {}
         app_name = data.get('app_name', '').strip()
@@ -3087,45 +3105,76 @@ async def start_develop_mode(request):
         import platform
         import os
         
-        # Determinar directorio temporal según el sistema operativo
+        # Determinar directorio base en el home del usuario según el sistema operativo
         if platform.system() == 'Windows':
-            # En Windows usar %TEMP% o C:\temp
-            temp_dir = os.environ.get('TEMP', 'C:\\temp')
-            workspace_path = os.path.join(temp_dir, f'ubtool_workspace_{app_name}_{int(time.time())}')
+            # En Windows usar %USERPROFILE%
+            home_dir = os.environ.get('USERPROFILE', os.path.expanduser('~'))
+            ubtool_dir = os.path.join(home_dir, 'UBTool', 'Workspaces')
         else:
-            # En Linux/Mac usar /tmp
-            workspace_path = f"/tmp/ubtool_workspace_{app_name}_{int(time.time())}"
+            # En Linux/Mac usar ~/UBTool/Workspaces
+            home_dir = os.path.expanduser('~')
+            ubtool_dir = os.path.join(home_dir, 'UBTool', 'Workspaces')
+        
+        # Crear directorio base de UBTool si no existe
+        os.makedirs(ubtool_dir, exist_ok=True)
+        
+        # Buscar si ya existe un workspace para esta app
+        existing_workspaces = []
+        if os.path.exists(ubtool_dir):
+            for item in os.listdir(ubtool_dir):
+                if item.startswith(f'ubtool_workspace_{app_name}_'):
+                    workspace_full_path = os.path.join(ubtool_dir, item)
+                    if os.path.isdir(workspace_full_path):
+                        existing_workspaces.append(workspace_full_path)
+        
+        # Si existe un workspace, usar el más reciente; si no, crear uno nuevo
+        if existing_workspaces:
+            # Ordenar por fecha de modificación y usar el más reciente
+            existing_workspaces.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            workspace_path = existing_workspaces[0]
+            print(f"🔄 Reusing existing workspace: {workspace_path}")
+        else:
+            # Crear nuevo workspace con timestamp
+            workspace_path = os.path.join(ubtool_dir, f'ubtool_workspace_{app_name}_{int(time.time())}')
+            print(f"🆕 Creating new workspace: {workspace_path}")
         
         try:
             # Crear directorio de trabajo local
             os.makedirs(workspace_path, exist_ok=True)
-            print(f"✅ Workspace directory created: {workspace_path}")
+            print(f"✅ Workspace directory ready: {workspace_path}")
             
-            # Copiar archivos de la app desde el dispositivo
-            copy_cmd = f"adb pull /home/phablet/Apps/{app_name}/ {workspace_path}/"
-            print(f"🔄 Copying app files: {copy_cmd}")
-            copy_result = subprocess.run(copy_cmd.split(), timeout=30, capture_output=True, text=True)
+            # Determinar si es un workspace nuevo o existente
+            is_new_workspace = not any(existing_workspaces)
             
-            print(f"📋 ADB pull result: {copy_result.returncode}")
-            if copy_result.stdout:
-                print(f"📤 STDOUT: {copy_result.stdout.strip()}")
-            if copy_result.stderr:
-                print(f"⚠️ STDERR: {copy_result.stderr.strip()}")
-            
-            # Verificar si al menos algunos archivos se copiaron exitosamente
-            if copy_result.returncode != 0:
-                # Verificar si el directorio de workspace tiene contenido
-                if os.path.exists(workspace_path) and os.listdir(workspace_path):
-                    print(f"⚠️ WARNING: Some files could not be copied, but workspace was created with partial content")
-                    print(f"📁 Workspace contents: {os.listdir(workspace_path)}")
+            if is_new_workspace:
+                # Solo copiar archivos si es un workspace nuevo
+                copy_cmd = f"adb pull /home/phablet/Apps/{app_name}/ {workspace_path}/"
+                print(f"🔄 Copying app files: {copy_cmd}")
+                copy_result = subprocess.run(copy_cmd.split(), timeout=30, capture_output=True, text=True)
+                
+                print(f"📋 ADB pull result: {copy_result.returncode}")
+                if copy_result.stdout:
+                    print(f"📤 STDOUT: {copy_result.stdout.strip()}")
+                if copy_result.stderr:
+                    print(f"⚠️ STDERR: {copy_result.stderr.strip()}")
+                
+                # Verificar si al menos algunos archivos se copiaron exitosamente
+                if copy_result.returncode != 0:
+                    # Verificar si el directorio de workspace tiene contenido
+                    if os.path.exists(workspace_path) and os.listdir(workspace_path):
+                        print(f"⚠️ WARNING: Some files could not be copied, but workspace was created with partial content")
+                        print(f"📁 Workspace contents: {os.listdir(workspace_path)}")
+                    else:
+                        print(f"❌ ERROR: Could not copy app files from device")
+                        print(f"   Command: {copy_cmd}")
+                        print(f"   Error: {copy_result.stderr}")
+                        # No continuar si no se pueden copiar ningún archivo
+                        return tunnel_info
                 else:
-                    print(f"❌ ERROR: Could not copy app files from device")
-                    print(f"   Command: {copy_cmd}")
-                    print(f"   Error: {copy_result.stderr}")
-                    # No continuar si no se pueden copiar ningún archivo
-                    return tunnel_info
+                    print(f"✅ App files copied to {workspace_path}")
             else:
-                print(f"✅ App files copied to {workspace_path}")
+                print(f"📂 Using existing workspace, skipping file copy")
+                print(f"📁 Current workspace contents: {os.listdir(workspace_path)}")
             
             # Continuar si tenemos al menos un directorio o archivo en el workspace
             if os.path.exists(workspace_path):
@@ -3162,37 +3211,107 @@ async def start_develop_mode(request):
                 # Agregar comando de sincronización automática compatible con Windows/Linux/Mac
                 if platform.system() == 'Windows':
                     sync_script = f'''@echo off
-REM Auto-sync script for {app_name}
-set WORKSPACE="{workspace_path}"
+REM Smart Auto-sync script for {app_name}
+set WORKSPACE="{workspace_path}\\{app_name}"
 set DEVICE_PATH="/home/phablet/Apps/{app_name}"
 
-echo 🔄 Starting auto-sync for {app_name}...
+echo 🔄 Starting smart auto-sync for {app_name}...
 echo 📁 Local workspace: %WORKSPACE%
 echo 📱 Device path: %DEVICE_PATH%
 
 :loop
-REM Push changes to device
-adb push "%WORKSPACE%\\*" "%DEVICE_PATH%/" 2>nul
-echo ✅ Synced changes to device (%date% %time%)
-timeout /t 2 >nul
+REM Check if app is running
+adb shell "test -f /home/phablet/.ubtool/pids/{app_name}.pid" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo 🔄 App is running, using smart sync...
+    REM For Windows, we'll do a gentler sync - only sync Python files and config
+    echo 🔄 Syncing critical files only...
+    adb push "%WORKSPACE%\\*.py" "%DEVICE_PATH%/" >nul 2>&1
+    adb push "%WORKSPACE%\\*.json" "%DEVICE_PATH%/" >nul 2>&1
+    adb push "%WORKSPACE%\\*.txt" "%DEVICE_PATH%/" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo ✅ Smart sync completed (%date% %time%)
+    ) else (
+        echo 💤 No critical changes to sync (%date% %time%)
+    )
+) else (
+    echo 🔄 App not running, doing full sync...
+    adb push "%WORKSPACE%\\*" "%DEVICE_PATH%/" >nul 2>&1
+    if %errorlevel% equ 0 (
+        echo ✅ Full sync completed (%date% %time%)
+    ) else (
+        echo ⚠️ Sync failed (%date% %time%)
+    )
+)
+
+timeout /t 3 >nul
 goto loop
 '''
                 else:
                     sync_script = f'''#!/bin/bash
 # Auto-sync script for {app_name}
-WORKSPACE="{workspace_path}"
+WORKSPACE="{workspace_path}/{app_name}"
 DEVICE_PATH="/home/phablet/Apps/{app_name}"
 
-echo "🔄 Starting auto-sync for {app_name}..."
+echo "🔄 Starting smart auto-sync for {app_name}..."
 echo "📁 Local workspace: $WORKSPACE"
 echo "📱 Device path: $DEVICE_PATH"
 
-# Watch for changes and sync automatically
+# Function to check if app is running
+is_app_running() {{
+    adb shell "test -f /home/phablet/.ubtool/pids/{app_name}.pid" 2>/dev/null
+    return $?
+}}
+
+# Function to sync without restarting app
+smart_sync() {{
+    echo "🔄 Smart syncing changes to device..."
+    
+    # Check which files changed recently (last 5 seconds)
+    CHANGED_FILES=$(find "$WORKSPACE" -type f -newermt "5 seconds ago" 2>/dev/null || true)
+    
+    if [ -n "$CHANGED_FILES" ]; then
+        # Only sync changed files to avoid unnecessary restarts
+        echo "📝 Detected changes in: $(echo "$CHANGED_FILES" | head -3)"
+        
+        # Sync specific files that changed
+        for file in $CHANGED_FILES; do
+            REL_PATH=${{file#$WORKSPACE/}}
+            DEST_PATH="$DEVICE_PATH/$REL_PATH"
+            
+            # Create directory if needed
+            adb shell "mkdir -p $(dirname "$DEST_PATH")" 2>/dev/null
+            
+            # Copy the specific file
+            adb push "$file" "$DEST_PATH" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo "✅ Synced: $REL_PATH"
+            fi
+        done
+        
+        echo "🔄 Changes synced at $(date)"
+    else
+        echo "💤 No changes detected"
+    fi
+}}
+
+# Main sync loop
 while true; do
-    # Push changes to device
-    adb push "$WORKSPACE/"* "$DEVICE_PATH/" 2>/dev/null
-    echo "✅ Synced changes to device ($(date))"
-    sleep 2
+    if is_app_running; then
+        # App is running, use smart sync
+        smart_sync
+    else
+        # App is not running, do full sync
+        echo "🔄 App not running, doing full sync..."
+        adb push "$WORKSPACE/"* "$DEVICE_PATH/" 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo "✅ Full sync completed ($(date))"
+        else
+            echo "⚠️ Sync failed ($(date))"
+        fi
+    fi
+    
+    sleep 3
 done
 '''
                 
@@ -3209,6 +3328,26 @@ done
                     if platform.system() != 'Windows':
                         os.chmod(script_path, 0o755)
                         print(f"✅ Made sync script executable")
+                        
+                        # Iniciar script de sincronización en segundo plano
+                        try:
+                            # Usar nohup para que el proceso continúe aunque se cierre la terminal
+                            sync_process = subprocess.Popen(
+                                ['nohup', script_path],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                                start_new_session=True
+                            )
+                            print(f"🔄 Auto-sync started in background (PID: {sync_process.pid})")
+                            print(f"📝 Sync log: {workspace_path}/nohup.out")
+                            
+                            # Guardar PID del proceso de sincronización
+                            workspace_info['sync_pid'] = sync_process.pid
+                            
+                        except Exception as sync_e:
+                            print(f"⚠️ WARNING: Could not start auto-sync: {sync_e}")
+                            print(f"💡 You can start it manually with: {script_path}")
+                    
                 except Exception as script_e:
                     print(f"❌ ERROR creating sync script: {script_e}")
                 
@@ -3386,6 +3525,29 @@ async def stop_develop_mode(request, app_name):
         # Eliminar del registro global de túneles activos
         remove_from_registry_cmd = f"sed -i '/^{app_name}:/d' /home/phablet/.ubtool/tunnels/active_tunnels.txt 2>/dev/null || true"
         subprocess.run(['adb', 'shell', remove_from_registry_cmd], timeout=5)
+        
+        # Detener proceso de sincronización si está corriendo
+        try:
+            # Buscar PIDs de procesos de sincronización para esta app
+            find_sync_pids_cmd = f"ps aux | grep 'sync.sh.*{app_name}' | grep -v grep | awk '{{print $2}}'"
+            result = subprocess.run(['bash', '-c', find_sync_pids_cmd], timeout=5, capture_output=True, text=True)
+            
+            if result.stdout.strip():
+                pids = result.stdout.strip().split('\n')
+                for pid in pids:
+                    if pid.strip():
+                        try:
+                            subprocess.run(['kill', '-TERM', pid.strip()], timeout=5)
+                            print(f"🛑 Stopped sync process (PID: {pid.strip()})")
+                        except:
+                            try:
+                                subprocess.run(['kill', '-KILL', pid.strip()], timeout=5)
+                                print(f"💀 Force killed sync process (PID: {pid.strip()})")
+                            except:
+                                pass
+                print(f"✅ Auto-sync stopped for {app_name}")
+        except Exception as sync_stop_e:
+            print(f"⚠️ Could not stop sync process: {sync_stop_e}")
         
         return {
             'success': True,
