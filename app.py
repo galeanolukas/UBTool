@@ -640,7 +640,7 @@ async def prepare_dev_environment(request):
             "/home/phablet/.ubtool/venv/bin/pip install --upgrade pip",
             
             # Install essential packages
-            "/home/phablet/.ubtool/venv/bin/pip install flask fastapi microdot jinja2 requests"
+            "/home/phablet/.ubtool/venv/bin/pip install flask fastapi microdot jinja2 requests flask-cors"
         ]
         
         for cmd in commands:
@@ -716,7 +716,6 @@ async def venv_status(request):
             'success': False,
             'error': str(e)
         })
-
 
 @app.route('/api/files/list')
 async def list_device_files(request):
@@ -1136,7 +1135,7 @@ def prepare_dev_environment(request):
         })
 
         # Install shared frameworks (best effort)
-        install_fw = run_shell(f"{global_venv_pip} install -U microdot jinja2 flask gunicorn fastapi uvicorn", timeout=300)
+        install_fw = run_shell(f"{global_venv_pip} install -U microdot jinja2 flask gunicorn flask-cors fastapi uvicorn[standard]", timeout=300)
         details['actions'].append({
             'step': 'install_frameworks_global_venv',
             'return_code': install_fw.returncode,
@@ -1353,10 +1352,14 @@ def get_flask_app_content(app_name, framework, app_path, python_path):
 Created with UBTool using ''' + framework + ''' framework
 """
 
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, render_template_string, jsonify, request
+from flask_cors import CORS
 import sys
+import os
+import time
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for API endpoints
 
 # Global variables for the app
 app_name = "''' + app_name + '''"
@@ -1386,33 +1389,66 @@ def index():
 <head>
     <meta charset="UTF-8">
     <title>""" + app_name + """</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 30px; border-radius: 15px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.2); }
+        .status { background: rgba(76, 175, 80, 0.2); border-left: 4px solid #4CAF50; }
+        .info { background: rgba(33, 150, 243, 0.2); border-left: 4px solid #2196F3; }
+        .api { background: rgba(255, 152, 0, 0.2); border-left: 4px solid #FF9800; }
+        h1 { color: #ff6b35; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 30px; }
+        .emoji { font-size: 2em; margin-right: 10px; }
+        code { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 5px; font-family: 'Courier New', monospace; }
+        .method { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold; }
+        .flask-badge { background: #e34c26; color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; margin: 10px 0; font-weight: bold; }
+    </style>
 </head>
-<body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
-    <h1 style="color: #ff6b35;">🌶️ """ + app_name + """</h1>
-    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
-        <h2>✅ Flask App Status: RUNNING</h2>
-        <p><strong>Framework:</strong> """ + framework + """</p>
-        <p><strong>Host:</strong> """ + HOST + """</p>
-        <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
-        <p><strong>Python:</strong> """ + python_path + """</p>
-    </div>
-    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <h3>📋 App Information</h3>
-        <p><strong>App Name:</strong> """ + app_name + """</p>
-        <p><strong>App Path:</strong> """ + app_path + """</p>
-        <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
-        <p><strong>Created:</strong> with UBTool</p>
-    </div>
-    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <h3>🔧 Available Endpoints</h3>
-        <p><code>GET /</code> - Main page</p>
-        <p><code>GET /api/status</code> - Status check</p>
-        <p><code>GET /api/info</code> - App information</p>
+<body>
+    <div class="container">
+        <h1><span class="emoji">🌶️</span>""" + app_name + """</h1>
+        <div class="flask-badge">Flask Application</div>
+        
+        <div class="card status">
+            <h2><span class="emoji">✅</span>Flask App Status: RUNNING</h2>
+            <p><strong>Framework:</strong> """ + framework + """</p>
+            <p><strong>Host:</strong> """ + HOST + """</p>
+            <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
+            <p><strong>Python:</strong> """ + python_path + """</p>
+            <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
+        </div>
+        
+        <div class="card info">
+            <h3><span class="emoji">📋</span>App Information</h3>
+            <p><strong>App Name:</strong> """ + app_name + """</p>
+            <p><strong>App Path:</strong> """ + app_path + """</p>
+            <p><strong>Created:</strong> with UBTool</p>
+            <p><strong>Template Engine:</strong> Jinja2</p>
+        </div>
+        
+        <div class="card api">
+            <h3><span class="emoji">🔧</span>Available Endpoints</h3>
+            <p><span class="method">GET</span> <code>/</code> - Main page</p>
+            <p><span class="method">GET</span> <code>/api/status</code> - Status check</p>
+            <p><span class="method">GET</span> <code>/api/info</code> - App information</p>
+            <p><span class="method">POST</span> <code>/api/echo</code> - Echo service</p>
+            <p><span class="method">GET</span> <code>/api/health</code> - Health check</p>
+        </div>
+        
+        <div class="card">
+            <h3><span class="emoji">🚀</span>Flask Features</h3>
+            <ul>
+                <li>📝 Template rendering with Jinja2</li>
+                <li>🔗 URL routing with decorators</li>
+                <li>🌐 CORS enabled for API endpoints</li>
+                <li>⚡ Lightweight and fast</li>
+                <li>🛠️ Extensive ecosystem</li>
+            </ul>
+        </div>
     </div>
 </body>
 </html>"""
     
-    return html_content
+    return render_template_string(html_content)
 
 @app.route('/api/status')
 def api_status():
@@ -1425,7 +1461,9 @@ def api_status():
         'app_path': app_path,
         'port': dynamic_port,
         'debug': DEBUG,
-        'host': HOST
+        'host': HOST,
+        'server': 'Flask',
+        'version': '2.3.3'
     })
 
 @app.route('/api/info')
@@ -1436,13 +1474,39 @@ def api_info():
         'framework': framework,
         'python_path': python_path,
         'app_path': app_path,
-        'description': 'App created with UBTool',
+        'description': 'Flask app created with UBTool',
         'version': '1.0.0',
-        'endpoints': ['/', '/api/status', '/api/info']
+        'endpoints': ['/', '/api/status', '/api/info', '/api/echo', '/api/health'],
+        'features': ['jinja2_templates', 'cors_enabled', 'json_responses', 'request_handling'],
+        'created_with': 'UBTool'
+    })
+
+@app.route('/api/echo', methods=['POST'])
+def api_echo():
+    """Echo service - returns received data"""
+    data = request.get_json() or {}
+    return jsonify({
+        'echo': data,
+        'method': 'POST',
+        'framework': 'Flask',
+        'timestamp': '""" + str(int(time.time())) + """'
+    })
+
+@app.route('/api/health')
+def api_health():
+    """Health check endpoint"""
+    return jsonify({
+        'health': 'ok',
+        'status': 'healthy',
+        'framework': 'Flask',
+        'uptime': 'running'
     })
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
+    print(f"🌶️ Starting Flask app '{app_name}' on http://{HOST}:{PORT}")
+    print(f"📁 App path: {app_path}")
+    print(f"🐍 Python: {python_path}")
+    print(f"🔧 Debug mode: {DEBUG}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
 '''
     return content
@@ -1456,12 +1520,29 @@ def get_fastapi_app_content(app_name, framework, app_path, python_path):
 Created with UBTool using ''' + framework + ''' framework
 """
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 import sys
+import time
+from typing import Dict, Any
 
-app = FastAPI()
+app = FastAPI(
+    title="''' + app_name + '''",
+    description="FastAPI app created with UBTool",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Global variables for the app
 app_name = "''' + app_name + '''"
@@ -1483,6 +1564,21 @@ else:
 
 dynamic_port = PORT
 
+# Pydantic models for API
+class EchoRequest(BaseModel):
+    message: str
+    data: Dict[str, Any] = {}
+
+class StatusResponse(BaseModel):
+    status: str
+    app: str
+    framework: str
+    port: int
+    debug: bool
+    host: str
+    server: str
+    version: str
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Main page"""
@@ -1491,49 +1587,83 @@ async def index():
 <head>
     <meta charset="UTF-8">
     <title>""" + app_name + """</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); color: white; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 30px; border-radius: 15px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.2); }
+        .status { background: rgba(76, 175, 80, 0.2); border-left: 4px solid #4CAF50; }
+        .info { background: rgba(33, 150, 243, 0.2); border-left: 4px solid #2196F3; }
+        .api { background: rgba(255, 152, 0, 0.2); border-left: 4px solid #FF9800; }
+        h1 { color: #ff6b35; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); margin-bottom: 30px; }
+        .emoji { font-size: 2em; margin-right: 10px; }
+        code { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 5px; font-family: 'Courier New', monospace; }
+        .method { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold; }
+        .fastapi-badge { background: #009688; color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; margin: 10px 0; font-weight: bold; }
+        .feature { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin: 5px 0; }
+    </style>
 </head>
-<body style="font-family: Arial; margin: 40px; background: #1a1a1a; color: white;">
-    <h1 style="color: #ff6b35;">⚡ """ + app_name + """</h1>
-    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px;">
-        <h2>✅ FastAPI App Status: RUNNING</h2>
-        <p><strong>Framework:</strong> """ + framework + """</p>
-        <p><strong>Host:</strong> """ + HOST + """</p>
-        <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
-        <p><strong>Python:</strong> """ + python_path + """</p>
-    </div>
-    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <h3>📋 App Information</h3>
-        <p><strong>App Name:</strong> """ + app_name + """</p>
-        <p><strong>App Path:</strong> """ + app_path + """</p>
-        <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
-        <p><strong>Created:</strong> with UBTool</p>
-    </div>
-    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <h3>🔧 Available Endpoints</h3>
-        <p><code>GET /</code> - Main page</p>
-        <p><code>GET /api/status</code> - Status check</p>
-        <p><code>GET /api/info</code> - App information</p>
-        <p><code>GET /docs</code> - OpenAPI documentation</p>
+<body>
+    <div class="container">
+        <h1><span class="emoji">⚡</span>""" + app_name + """</h1>
+        <div class="fastapi-badge">FastAPI Application</div>
+        
+        <div class="card status">
+            <h2><span class="emoji">✅</span>FastAPI App Status: RUNNING</h2>
+            <p><strong>Framework:</strong> """ + framework + """</p>
+            <p><strong>Host:</strong> """ + HOST + """</p>
+            <p><strong>Puerto:</strong> """ + str(PORT) + """</p>
+            <p><strong>Python:</strong> """ + python_path + """</p>
+            <p><strong>Debug Mode:</strong> """ + str(DEBUG) + """</p>
+        </div>
+        
+        <div class="card info">
+            <h3><span class="emoji">📋</span>App Information</h3>
+            <p><strong>App Name:</strong> """ + app_name + """</p>
+            <p><strong>App Path:</strong> """ + app_path + """</p>
+            <p><strong>Created:</strong> with UBTool</p>
+            <p><strong>ASGI Server:</strong> Uvicorn</p>
+            <p><strong>API Documentation:</strong> <a href="/docs" style="color: #4CAF50;">/docs</a></p>
+        </div>
+        
+        <div class="card api">
+            <h3><span class="emoji">🔧</span>Available Endpoints</h3>
+            <p><span class="method">GET</span> <code>/</code> - Main page</p>
+            <p><span class="method">GET</span> <code>/api/status</code> - Status check</p>
+            <p><span class="method">GET</span> <code>/api/info</code> - App information</p>
+            <p><span class="method">POST</span> <code>/api/echo</code> - Echo service</p>
+            <p><span class="method">GET</span> <code>/api/health</code> - Health check</p>
+            <p><span class="method">GET</span> <code>/docs</code> - API documentation</p>
+            <p><span class="method">GET</span> <code>/redoc</code> - Alternative docs</p>
+        </div>
+        
+        <div class="card">
+            <h3><span class="emoji">🚀</span>FastAPI Features</h3>
+            <div class="feature">🚀 High performance async/await support</div>
+            <div class="feature">📖 Automatic API documentation (Swagger/ReDoc)</div>
+            <div class="feature">✅ Type hints with Pydantic models</div>
+            <div class="feature">🛡️ Built-in data validation</div>
+            <div class="feature">🌐 CORS middleware enabled</div>
+            <div class="feature">🔧 Dependency injection system</div>
+        </div>
     </div>
 </body>
 </html>"""
     
-    return html_content
+    return HTMLResponse(content=html_content)
 
-@app.get("/api/status")
+@app.get("/api/status", response_model=StatusResponse)
 async def api_status():
     """API status endpoint"""
-    return {
-        "status": "running",
-        "app": app_name,
-        "framework": framework,
-        "python_path": python_path,
-        "app_path": app_path,
-        "port": dynamic_port,
-        "debug": DEBUG,
-        "host": HOST,
-        "endpoints": ["/", "/api/status", "/api/info", "/docs"]
-    }
+    return StatusResponse(
+        status="running",
+        app=app_name,
+        framework=framework,
+        port=dynamic_port,
+        debug=DEBUG,
+        host=HOST,
+        server="FastAPI",
+        version="0.104.1"
+    )
 
 @app.get("/api/info")
 async def api_info():
@@ -1543,14 +1673,71 @@ async def api_info():
         "framework": framework,
         "python_path": python_path,
         "app_path": app_path,
-        "description": "App created with UBTool",
+        "description": "FastAPI app created with UBTool",
         "version": "1.0.0",
-        "endpoints": ["/", "/api/status", "/api/info", "/docs"]
+        "endpoints": ["/", "/api/status", "/api/info", "/api/echo", "/api/health", "/docs", "/redoc"],
+        "features": ["async_support", "automatic_docs", "pydantic_validation", "cors_enabled", "type_hints"],
+        "created_with": "UBTool",
+        "server_info": {
+            "asgi_server": "uvicorn",
+            "python_version": sys.version,
+            "fastapi_version": "0.104.1"
+        }
+    }
+
+@app.post("/api/echo")
+async def api_echo(request: EchoRequest):
+    """Echo service - returns received data"""
+    return {
+        "echo": {
+            "message": request.message,
+            "data": request.data
+        },
+        "method": "POST",
+        "framework": "FastAPI",
+        "timestamp": """ + str(int(time.time())) + """,
+        "received_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+@app.get("/api/health")
+async def api_health():
+    """Health check endpoint"""
+    return {
+        "health": "ok",
+        "status": "healthy",
+        "framework": "FastAPI",
+        "uptime": "running",
+        "checks": {
+            "database": "not_configured",
+            "external_apis": "not_configured",
+            "memory": "ok"
+        }
+    }
+
+@app.get("/api/middleware-info")
+async def middleware_info(request: Request):
+    """Show middleware information"""
+    return {
+        "client": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown"),
+        "method": request.method,
+        "url": str(request.url),
+        "framework": "FastAPI"
     }
 
 if __name__ == '__main__':
-    print(f"🚀 Starting {app_name} on http://{HOST}:{PORT}")
-    uvicorn.run(app, host=HOST, port=PORT, reload=DEBUG)
+    print(f"⚡ Starting FastAPI app '{app_name}' on http://{HOST}:{PORT}")
+    print(f"📁 App path: {app_path}")
+    print(f"🐍 Python: {python_path}")
+    print(f"🔧 Debug mode: {DEBUG}")
+    print(f"📖 API docs: http://{HOST}:{PORT}/docs")
+    
+    if DEBUG:
+        # Use reload for development
+        uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+    else:
+        # Use app directly for production
+        uvicorn.run(app, host=HOST, port=PORT)
 '''
     return content
 

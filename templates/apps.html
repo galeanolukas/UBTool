@@ -590,6 +590,162 @@ function showNotification(message, type, duration = 3000) {
     }, 3000);
 }
 
+async function viewLogs(appName) {
+    try {
+        showNotification(`📋 Cargando logs de ${appName}...`, 'info');
+        
+        const response = await fetch(`/api/devtools/get_logs?app_name=${encodeURIComponent(appName)}`);
+        const data = await parseJSONResponse(response);
+        
+        if (data.success && data.logs) {
+            // Create modal for logs
+            const modal = document.createElement('div');
+            modal.id = 'logs-viewer-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                z-index: 3000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                backdrop-filter: blur(5px);
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #1a1a1a; border-radius: 15px; padding: 0; max-width: 90vw; max-height: 90vh; width: 900px; height: 600px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.5rem; font-weight: 600;">
+                            📋 Logs de ${appName}
+                        </h3>
+                        <button onclick="this.closest('#logs-viewer-modal').remove()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 1.2rem;">
+                            ✕
+                        </button>
+                    </div>
+                    <div style="padding: 1.5rem; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 4px solid #FF9800;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <span style="color: #FF9800; font-weight: bold;">📁 Archivo:</span>
+                                <span style="color: #4CAF50; font-family: monospace; background: rgba(76,175,80,0.2); padding: 0.25rem 0.5rem; border-radius: 4px;">${data.log_file || 'app.log'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #FF9800; font-weight: bold;">📊 Tamaño:</span>
+                                <span style="color: #2196F3; font-family: monospace;">${data.file_size || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div style="background: #000; border-radius: 8px; padding: 1rem; flex: 1; overflow: auto; border: 1px solid rgba(255,255,255,0.1);">
+                            <pre style="margin: 0; color: #00ff00; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;">${data.logs}</pre>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
+                            <button onclick="refreshLogs('${appName}')" style="background: #2196F3; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                🔄 Actualizar
+                            </button>
+                            <button onclick="downloadLogs('${appName}')" style="background: #4CAF50; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                📥 Descargar
+                            </button>
+                            <button onclick="clearLogs('${appName}')" style="background: #f44336; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                🗑️ Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add click outside to close
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            // Add escape key to close
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', escapeHandler);
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
+            
+        } else {
+            showNotification(`❌ Error: ${data.error || 'No se pudieron cargar los logs'}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`❌ Error de conexión: ${error.message}`, 'error');
+    }
+}
+
+async function refreshLogs(appName) {
+    try {
+        const response = await fetch(`/api/devtools/get_logs?app_name=${encodeURIComponent(appName)}`);
+        const data = await parseJSONResponse(response);
+        
+        if (data.success && data.logs) {
+            const preElement = document.querySelector('#logs-viewer-modal pre');
+            if (preElement) {
+                preElement.textContent = data.logs;
+                showNotification(`📋 Logs de ${appName} actualizados`, 'success');
+            }
+        }
+    } catch (error) {
+        showNotification(`❌ Error actualizando logs: ${error.message}`, 'error');
+    }
+}
+
+async function downloadLogs(appName) {
+    try {
+        const response = await fetch(`/api/devtools/download_logs?app_name=${encodeURIComponent(appName)}`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${appName}_logs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showNotification(`📥 Logs de ${appName} descargados`, 'success');
+        } else {
+            showNotification(`❌ Error descargando logs`, 'error');
+        }
+    } catch (error) {
+        showNotification(`❌ Error descargando logs: ${error.message}`, 'error');
+    }
+}
+
+async function clearLogs(appName) {
+    if (confirm(`⚠️ ¿Estás seguro de que quieres limpiar los logs de ${appName}? Esta acción no se puede deshacer.`)) {
+        try {
+            const response = await fetch(`/api/devtools/clear_logs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_name: appName })
+            });
+            
+            const data = await parseJSONResponse(response);
+            
+            if (data.success) {
+                const preElement = document.querySelector('#logs-viewer-modal pre');
+                if (preElement) {
+                    preElement.textContent = 'Logs limpiados. No hay entradas nuevas.';
+                }
+                showNotification(`🗑️ Logs de ${appName} limpiados`, 'success');
+            } else {
+                showNotification(`❌ Error: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            showNotification(`❌ Error limpiando logs: ${error.message}`, 'error');
+        }
+    }
+}
+
 // Add animations
 const style = document.createElement('style');
 style.textContent = `

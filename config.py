@@ -13,8 +13,8 @@ APPS_BASE_PATH = "/home/phablet/Apps"
 # Framework-specific default packages
 FRAMEWORK_PACKAGES = {
     "microdot": ["microdot", "jinja2"],
-    "flask": ["flask", "gunicorn", "jinja2"],
-    "fastapi": ["fastapi", "uvicorn", "jinja2"],
+    "flask": ["flask", "gunicorn", "jinja2", "flask-cors"],
+    "fastapi": ["fastapi", "uvicorn[standard]", "jinja2"],
     "django": ["django", "gunicorn"],
     "bottle": ["bottle"],
     "http-server": [],  # No additional packages needed
