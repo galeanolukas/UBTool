@@ -209,12 +209,6 @@ async function refreshAppsList() {
                                             ${app.is_running ? '⏹️ Detener' : '⏹️ Detener'}
                                         </button>
                                     </div>
-                                    <div class="w3-col s4" style="padding: 0.25rem;">
-                                        <button onclick="modoDesarrollo('${app.name}')" class="w3-btn w3-round-large w3-block" 
-                                                style="background: #9C27B0; color: white; padding: 0.5rem; font-size: 0.9rem;">
-                                            🛠️ Modo Desarrollo
-                                        </button>
-                                    </div>
                                 </div>
                                 <div class="w3-row" style="margin-top: 0.5rem;">
                                     <div class="w3-col s6" style="padding: 0.25rem;">
@@ -497,11 +491,6 @@ function showDeleteModal(appName) {
 function closeDeleteModal() {
     document.getElementById('delete-modal').style.display = 'none';
     appToDelete = null;
-}
-
-function modoDesarrollo(appName) {
-    alert(`Modo Desarrollo presionado para: ${appName}`);
-    console.log(`Modo Desarrollo button clicked for app: ${appName}`);
 }
 
 async function confirmDelete() {
