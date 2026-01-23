@@ -717,6 +717,174 @@ async def venv_status(request):
             'error': str(e)
         })
 
+@app.route('/api/devtools/get_logs')
+async def get_logs(request):
+    """API: Obtener logs de una app específica"""
+    try:
+        app_name = request.args.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Ruta del archivo de logs en el dispositivo
+        log_file = f"/home/phablet/Apps/{app_name}/app.log"
+        
+        # Verificar si el archivo de logs existe
+        check_cmd = f"test -f {log_file} && echo 'exists' || echo 'not_exists'"
+        check_result = subprocess.run(['adb', 'shell', check_cmd], capture_output=True, text=True, timeout=10)
+        
+        if check_result.returncode == 0 and 'exists' in check_result.stdout:
+            # Leer el contenido del archivo de logs
+            read_cmd = f"tail -n 100 {log_file} 2>/dev/null || echo 'Error reading log file'"
+            read_result = subprocess.run(['adb', 'shell', read_cmd], capture_output=True, text=True, timeout=15)
+            
+            # Obtener tamaño del archivo
+            size_cmd = f"wc -c {log_file} 2>/dev/null | awk '{{print $1}}' || echo '0'"
+            size_result = subprocess.run(['adb', 'shell', size_cmd], capture_output=True, text=True, timeout=10)
+            
+            file_size = size_result.stdout.strip() if size_result.returncode == 0 else 'N/A'
+            
+            return json.dumps({
+                'success': True,
+                'app_name': app_name,
+                'log_file': 'app.log',
+                'file_size': file_size,
+                'logs': read_result.stdout,
+                'lines_count': len(read_result.stdout.split('\n')) if read_result.stdout else 0
+            })
+        else:
+            return json.dumps({
+                'success': True,
+                'app_name': app_name,
+                'log_file': 'app.log',
+                'file_size': '0',
+                'logs': f'No se encontró el archivo de logs para {app_name}\nPosibles causas:\n- La app no se ha iniciado aún\n- Los logs están en otra ubicación\n- El archivo fue eliminado',
+                'lines_count': 0
+            })
+            
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': f'Error obteniendo logs: {str(e)}'
+        })
+
+@app.route('/api/devtools/download_logs')
+async def download_logs(request):
+    """API: Descargar logs de una app específica"""
+    try:
+        app_name = request.args.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Ruta del archivo de logs en el dispositivo
+        log_file = f"/home/phablet/Apps/{app_name}/app.log"
+        
+        # Verificar si el archivo existe
+        check_cmd = f"test -f {log_file}"
+        check_result = subprocess.run(['adb', 'shell', check_cmd], capture_output=True, text=True, timeout=10)
+        
+        if check_result.returncode == 0:
+            # Copiar el archivo de logs a un temporal local
+            temp_file = f"/tmp/{app_name}_logs.txt"
+            copy_cmd = f"adb pull {log_file} {temp_file}"
+            copy_result = subprocess.run(copy_cmd.split(), timeout=30)
+            
+            if copy_result.returncode == 0:
+                # Leer el contenido para devolverlo
+                with open(temp_file, 'r', encoding='utf-8', errors='ignore') as f:
+                    log_content = f.read()
+                
+                # Limpiar el archivo temporal
+                import os
+                os.remove(temp_file)
+                
+                from microdot import Response
+                return Response(
+                    log_content,
+                    mimetype='text/plain',
+                    headers={'Content-Disposition': f'attachment; filename="{app_name}_logs.txt"'}
+                )
+            else:
+                return json.dumps({
+                    'success': False,
+                    'error': 'Error descargando archivo de logs'
+                })
+        else:
+            return json.dumps({
+                'success': False,
+                'error': f'No se encontró el archivo de logs para {app_name}'
+            })
+            
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': f'Error descargando logs: {str(e)}'
+        })
+
+@app.route('/api/devtools/clear_logs', methods=['POST'])
+async def clear_logs(request):
+    """API: Limpiar logs de una app específica"""
+    try:
+        data = request.json or {}
+        app_name = data.get('app_name', '').strip()
+        
+        if not app_name:
+            return json.dumps({
+                'success': False,
+                'error': 'Nombre de app requerido'
+            })
+        
+        # Ruta del archivo de logs en el dispositivo
+        log_file = f"/home/phablet/Apps/{app_name}/app.log"
+        
+        # Verificar si el archivo existe
+        check_cmd = f"test -f {log_file}"
+        check_result = subprocess.run(['adb', 'shell', check_cmd], capture_output=True, text=True, timeout=10)
+        
+        if check_result.returncode == 0:
+            # Hacer backup del contenido actual
+            timestamp = subprocess.run(['date', '+%Y%m%d_%H%M%S'], capture_output=True, text=True).stdout.strip()
+            backup_file = f"{log_file}.backup_{timestamp}"
+            
+            backup_cmd = f"cp {log_file} {backup_file} 2>/dev/null"
+            subprocess.run(['adb', 'shell', backup_cmd], timeout=10)
+            
+            # Limpiar el archivo de logs
+            clear_cmd = f"echo '# Logs limpiados el {timestamp}' > {log_file}"
+            clear_result = subprocess.run(['adb', 'shell', clear_cmd], capture_output=True, text=True, timeout=10)
+            
+            if clear_result.returncode == 0:
+                return json.dumps({
+                    'success': True,
+                    'message': f'Logs de {app_name} limpiados exitosamente',
+                    'backup_file': f'app.log.backup_{timestamp}',
+                    'timestamp': timestamp
+                })
+            else:
+                return json.dumps({
+                    'success': False,
+                    'error': 'Error limpiando archivo de logs'
+                })
+        else:
+            return json.dumps({
+                'success': True,
+                'message': f'No existía archivo de logs para {app_name}',
+                'action': 'no_action_needed'
+            })
+            
+    except Exception as e:
+        return json.dumps({
+            'success': False,
+            'error': f'Error limpiando logs: {str(e)}'
+        })
+
 @app.route('/api/files/list')
 async def list_device_files(request):
     """API: Listar archivos del dispositivo (File Manager)."""
