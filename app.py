@@ -4032,6 +4032,320 @@ def main():
     else:
         print(f"✅ ADB encontrado en: {adb_manager.adb_path}")
     
+    # IA Assistant Routes
+    @app.route('/ia-assistant')
+    async def ia_assistant_page(request):
+        """Página del asistente de IA"""
+        try:
+            # Usar Jinja2 para renderizar templates
+            from jinja2 import Environment, FileSystemLoader
+            from microdot import Response
+            
+            # Configurar entorno Jinja2
+            env = Environment(loader=FileSystemLoader('templates'))
+            template = env.get_template('ia_assistant.html')
+            
+            # Renderizar template con contexto
+            rendered_html = template.render()
+            
+            return Response(rendered_html, headers={'Content-Type': 'text/html; charset=utf-8'})
+            
+        except Exception as e:
+            return Response(f"<h1>Error</h1><p>{str(e)}</p>", headers={'Content-Type': 'text/html; charset=utf-8'})
+
+    @app.route('/api/ia/detect-hardware')
+    async def detect_hardware(request):
+        """API: Detectar hardware del dispositivo"""
+        try:
+            if not adb_manager.is_available():
+                return json.dumps({
+                    'success': False,
+                    'error': 'ADB no disponible'
+                })
+            
+            devices = adb_manager.get_devices()
+            if not devices:
+                return json.dumps({
+                    'success': False,
+                    'error': 'No hay dispositivos conectados'
+                })
+            
+            # Obtener información del hardware
+            commands = {
+                'ram': "free -h | grep '^Mem:' | awk '{print $2}'",
+                'storage': "df -h / | tail -1 | awk '{print $2}'",
+                'arch': "uname -m",
+                'cpu': "cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs"
+            }
+            
+            hardware_info = {}
+            for key, cmd in commands.items():
+                try:
+                    result = subprocess.run(['adb', 'shell', cmd], capture_output=True, text=True, timeout=10)
+                    hardware_info[key] = result.stdout.strip() if result.returncode == 0 else 'N/A'
+                except:
+                    hardware_info[key] = 'N/A'
+            
+            return json.dumps({
+                'success': True,
+                'hardware': hardware_info,
+                'recommendations': {
+                    'tinyllama': hardware_info.get('ram', '0GB').startswith('2') or hardware_info.get('ram', '0GB').startswith('4') or hardware_info.get('ram', '0GB').startswith('8'),
+                    'mobilenet': True  # MobileNetV2 es muy ligero
+                }
+            })
+            
+        except Exception as e:
+            return json.dumps({
+                'success': False,
+                'error': f'Error detectando hardware: {str(e)}'
+            })
+
+    @app.route('/api/ia/install-model', methods=['POST'])
+    async def install_model(request):
+        """API: Instalar modelo de IA"""
+        try:
+            data = request.json or {}
+            model_type = data.get('model', '').strip().lower()
+            
+            if model_type not in ['tinyllama', 'mobilenet']:
+                return json.dumps({
+                    'success': False,
+                    'error': 'Modelo no válido. Debe ser tinyllama o mobilenet'
+                })
+            
+            if not adb_manager.is_available():
+                return json.dumps({
+                    'success': False,
+                    'error': 'ADB no disponible'
+                })
+            
+            # Crear directorio para modelos IA
+            ia_dir = "/home/phablet/.ubtool/ia_models"
+            commands = [
+                f"mkdir -p {ia_dir}",
+                f"mkdir -p {ia_dir}/{model_type}"
+            ]
+            
+            for cmd in commands:
+                result = subprocess.run(['adb', 'shell', cmd], capture_output=True, text=True, timeout=15)
+                if result.returncode != 0:
+                    return json.dumps({
+                        'success': False,
+                        'error': f'Error creando directorios: {result.stderr}'
+                    })
+            
+            # Instalar dependencias según el modelo
+            if model_type == 'tinyllama':
+                install_result = await install_tinyllama(ia_dir)
+            else:
+                install_result = await install_mobilenet(ia_dir)
+            
+            return json.dumps(install_result)
+            
+        except Exception as e:
+            return json.dumps({
+                'success': False,
+                'error': f'Error instalando modelo: {str(e)}'
+            })
+
+    async def install_tinyllama(ia_dir):
+        """Instalar TinyLLama"""
+        try:
+            # Instalar dependencias Python
+            packages = ["transformers", "torch", "onnx", "sentencepiece"]
+            install_cmd = f"/home/phablet/.ubtool/venv/bin/pip install {' '.join(packages)}"
+            
+            result = subprocess.run(['adb', 'shell', install_cmd], capture_output=True, text=True, timeout=300)
+            if result.returncode != 0:
+                return {
+                    'success': False,
+                    'error': f'Error instalando dependencias: {result.stderr}'
+                }
+            
+            # Descargar modelo ligero
+            model_script = f"""
+cd {ia_dir}/tinyllama
+cat > download_model.py << 'EOF'
+import os
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+print("🦙 Descargando TinyLLama...")
+
+try:
+    model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.save_pretrained("./")
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="cpu",
+        low_cpu_mem_usage=True
+    )
+    model.save_pretrained("./")
+    
+    with open("example.py", "w") as f:
+        f.write('''
+from transformers import pipeline
+import sys
+
+generator = pipeline('text-generation', model='./', tokenizer='./')
+
+if len(sys.argv) > 1:
+    prompt = " ".join(sys.argv[1:])
+else:
+    prompt = "Hola, ¿cómo estás?"
+
+print(f"📝 Prompt: {{prompt}}")
+result = generator(prompt, max_length=100, do_sample=True, temperature=0.7)
+print(f"🤖 Respuesta: {{result[0]['generated_text']}}")
+''')
+    
+    print("✅ TinyLLama instalado exitosamente")
+    
+except Exception as e:
+    print(f"❌ Error: {{e}}")
+    exit(1)
+EOF
+
+python3 download_model.py
+"""
+            
+            result = subprocess.run(['adb', 'shell', model_script], capture_output=True, text=True, timeout=600)
+            
+            if result.returncode == 0:
+                return {
+                    'success': True,
+                    'message': 'TinyLLama instalado exitosamente',
+                    'path': f'{ia_dir}/tinyllama',
+                    'example_command': f'cd {ia_dir}/tinyllama && python3 example.py "Hola mundo"'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'Error descargando modelo: {result.stderr}'
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Error instalando TinyLLama: {str(e)}'
+            }
+
+    async def install_mobilenet(ia_dir):
+        """Instalar MobileNetV2"""
+        try:
+            # Instalar dependencias Python
+            packages = ["torch", "torchvision", "pillow", "numpy"]
+            install_cmd = f"/home/phablet/.ubtool/venv/bin/pip install {' '.join(packages)}"
+            
+            result = subprocess.run(['adb', 'shell', install_cmd], capture_output=True, text=True, timeout=300)
+            if result.returncode != 0:
+                return {
+                    'success': False,
+                    'error': f'Error instalando dependencias: {result.stderr}'
+                }
+            
+            # Configurar MobileNetV2
+            model_script = f"""
+cd {ia_dir}/mobilenet
+cat > setup_model.py << 'EOF'
+import torch
+import torchvision.models as models
+import torchvision.transforms as transforms
+from PIL import Image
+import json
+
+print("👁️ Configurando MobileNetV2...")
+
+try:
+    model = models.mobilenet_v2(pretrained=True)
+    model.eval()
+    
+    torch.save(model.state_dict(), "mobilenet_v2.pth")
+    
+    with open("imagenet_classes.json", "w") as f:
+        classes = [f"class_{{i}}" for i in range(1000)]
+        json.dump(classes, f)
+    
+    with open("classify_image.py", "w") as f:
+        f.write('''
+import torch
+import torchvision.models as models
+import torchvision.transforms as transforms
+from PIL import Image
+import json
+import sys
+
+model = models.mobilenet_v2(pretrained=False)
+model.load_state_dict(torch.load("mobilenet_v2.pth"))
+model.eval()
+
+transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+with open("imagenet_classes.json", "r") as f:
+    classes = json.load(f)
+
+def classify_image(image_path):
+    image = Image.open(image_path).convert("RGB")
+    image_tensor = transform(image).unsqueeze(0)
+    
+    with torch.no_grad():
+        outputs = model(image_tensor)
+        _, predicted = torch.max(outputs, 1)
+        confidence = torch.nn.functional.softmax(outputs, dim=1)[0] * 100
+    
+    return classes[predicted.item()], confidence[predicted.item()].item()
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        image_path = sys.argv[1]
+        class_name, confidence = classify_image(image_path)
+        print(f"🖼️ Clase: {{class_name}}")
+        print(f"📊 Confianza: {{confidence:.2f}}%")
+    else:
+        print("Uso: python3 classify_image.py <ruta_imagen>")
+''')
+    
+    print("✅ MobileNetV2 configurado exitosamente")
+    
+except Exception as e:
+    print(f"❌ Error: {{e}}")
+    exit(1)
+EOF
+
+python3 setup_model.py
+"""
+            
+            result = subprocess.run(['adb', 'shell', model_script], capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                return {
+                    'success': True,
+                    'message': 'MobileNetV2 instalado exitosamente',
+                    'path': f'{ia_dir}/mobilenet',
+                    'example_command': f'cd {ia_dir}/mobilenet && python3 classify_image.py /ruta/a/imagen.jpg'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'Error configurando modelo: {result.stderr}'
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Error instalando MobileNetV2: {str(e)}'
+            }
+    
     # Iniciar servidor
     try:
         app.run(host=HOST, port=PORT, debug=DEBUG)

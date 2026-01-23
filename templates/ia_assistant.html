@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}IA Assistant - UBTool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ia-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 3rem 0;
+        text-align: center;
+        color: white;
+        border-radius: 0 0 30px 30px;
+        margin-bottom: 2rem;
+    }
+    
+    .ia-hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .model-card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    
+    .model-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+        border-color: var(--ub-orange);
+    }
+    
+    .model-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    .model-title {
+        color: var(--ub-orange);
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+    
+    .model-description {
+        color: var(--ub-light);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+    
+    .model-specs {
+        background: rgba(0,0,0,0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .spec-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .spec-item:last-child {
+        border-bottom: none;
+    }
+    
+    .install-btn {
+        background: linear-gradient(135deg, var(--ub-orange) 0%, #FF6B35 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 25px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+    }
+    
+    .install-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(233, 84, 32, 0.3);
+    }
+    
+    .install-btn:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        margin-left: 0.5rem;
+    }
+    
+    .status-installed {
+        background: #4CAF50;
+        color: white;
+    }
+    
+    .status-available {
+        background: #2196F3;
+        color: white;
+    }
+    
+    .status-installing {
+        background: #FF9800;
+        color: white;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .hardware-info {
+        background: rgba(233, 84, 32, 0.1);
+        border: 1px solid var(--ub-orange);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 2rem 0;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--ub-orange), #FF6B35);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- IA Hero Section -->
+<div class="ia-hero">
+    <div class="w3-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+        <h1>🤖 IA Assistant</h1>
+        <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 2rem;">
+            Instala y gestiona modelos de IA ligeros optimizados para Ubuntu Touch
+        </p>
+        
+        <!-- Hardware Detection -->
+        <div class="hardware-info" id="hardware-info">
+            <h3 style="color: var(--ub-orange); margin-bottom: 1rem;">
+                <span class="loading-spinner"></span> Detectando hardware...
+            </h3>
+            <div id="hardware-details"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Models Section -->
+<div class="w3-content" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+    
+    <!-- TinyLLama Model -->
+    <div class="model-card">
+        <div class="w3-row">
+            <div class="w3-col m8">
+                <span class="model-icon">🦙</span>
+                <h2 class="model-title">
+                    TinyLLama
+                    <span class="status-badge status-available" id="tinyllama-status">Disponible</span>
+                </h2>
+                <p class="model-description">
+                    Modelo de lenguaje ligero basado en Llama, optimizado para dispositivos móviles. 
+                    Ideal para generación de texto, asistentes conversacionales y procesamiento de lenguaje natural.
+                </p>
+                
+                <div class="model-specs">
+                    <div class="spec-item">
+                        <span>Tamaño del modelo:</span>
+                        <strong>1.1B parámetros</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Memoria requerida:</span>
+                        <strong>~2GB RAM</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Almacenamiento:</span>
+                        <strong>~550MB</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Framework:</span>
+                        <strong>Transformers + ONNX</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Uso recomendado:</span>
+                        <strong>Chat, generación de texto</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="w3-col m4">
+                <button class="install-btn" id="tinyllama-btn" onclick="installModel('tinyllama')">
+                    🚀 Instalar TinyLLama
+                </button>
+                <div class="progress-bar" id="tinyllama-progress" style="display: none;">
+                    <div class="progress-fill" id="tinyllama-progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MobileNetV2 Model -->
+    <div class="model-card">
+        <div class="w3-row">
+            <div class="w3-col m8">
+                <span class="model-icon">👁️</span>
+                <h2 class="model-title">
+                    MobileNetV2
+                    <span class="status-badge status-available" id="mobilenet-status">Disponible</span>
+                </h2>
+                <p class="model-description">
+                    Red neuronal convolucional optimizada para visión por computadora en dispositivos móviles.
+                    Perfecta para clasificación de imágenes, detección de objetos y análisis visual en tiempo real.
+                </p>
+                
+                <div class="model-specs">
+                    <div class="spec-item">
+                        <span>Tamaño del modelo:</span>
+                        <strong>3.4M parámetros</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Memoria requerida:</span>
+                        <strong>~300MB RAM</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Almacenamiento:</span>
+                        <strong>~14MB</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Framework:</span>
+                        <strong>TensorFlow Lite + PyTorch</strong>
+                    </div>
+                    <div class="spec-item">
+                        <span>Uso recomendado:</span>
+                        <strong>Clasificación de imágenes</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="w3-col m4">
+                <button class="install-btn" id="mobilenet-btn" onclick="installModel('mobilenet')">
+                    🚀 Instalar MobileNetV2
+                </button>
+                <div class="progress-bar" id="mobilenet-progress" style="display: none;">
+                    <div class="progress-fill" id="mobilenet-progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Usage Examples -->
+    <div style="margin: 3rem 0; text-align: center;">
+        <h3 style="color: var(--ub-orange); margin-bottom: 2rem;">📚 Ejemplos de Uso</h3>
+        <div class="w3-row" style="gap: 2rem;">
+            <div class="w3-col m6" style="padding: 0 1rem;">
+                <div class="model-card" style="background: rgba(102, 126, 234, 0.1);">
+                    <h4 style="color: #667eea;">🦙 TinyLLama</h4>
+                    <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+<code># Ejemplo Python
+from transformers import pipeline
+
+# Cargar modelo
+generator = pipeline('text-generation', model='tinyllama')
+
+# Generar texto
+result = generator("Hola, ¿cómo estás?", max_length=50)
+print(result[0]['generated_text'])</code></pre>
+                </div>
+            </div>
+            <div class="w3-col m6" style="padding: 0 1rem;">
+                <div class="model-card" style="background: rgba(118, 75, 162, 0.1);">
+                    <h4 style="color: #764ba2;">👁️ MobileNetV2</h4>
+                    <pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+<code># Ejemplo Python
+import torch
+from torchvision import models, transforms
+
+# Cargar modelo
+model = models.mobilenet_v2(pretrained=True)
+
+# Predecir imagen
+with torch.no_grad():
+    output = model(image_tensor)
+    prediction = output.argmax().item()</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Hardware detection
+async function detectHardware() {
+    try {
+        const response = await fetch('/api/ia/detect-hardware');
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('hardware-info').innerHTML = `
+                <h3 style="color: var(--ub-orange); margin-bottom: 1rem;">
+                    📱 Hardware Detectado
+                </h3>
+                <div class="w3-row">
+                    <div class="w3-col m4">
+                        <div class="spec-item">
+                            <span>RAM Total:</span>
+                            <strong>${data.hardware.ram}</strong>
+                        </div>
+                    </div>
+                    <div class="w3-col m4">
+                        <div class="spec-item">
+                            <span>Storage:</span>
+                            <strong>${data.hardware.storage}</strong>
+                        </div>
+                    </div>
+                    <div class="w3-col m4">
+                        <div class="spec-item">
+                            <span>Arquitectura:</span>
+                            <strong>${data.hardware.arch}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; color: #4CAF50;">
+                    ✅ Hardware compatible con modelos ligeros
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('hardware-info').innerHTML = `
+            <h3 style="color: var(--ub-orange); margin-bottom: 1rem;">
+                ⚠️ Detección de hardware
+            </h3>
+            <p>No se pudo detectar el hardware automáticamente. Continúa con la instalación.</p>
+        `;
+    }
+}
+
+// Model installation
+async function installModel(modelType) {
+    const btn = document.getElementById(`${modelType}-btn`);
+    const progressBar = document.getElementById(`${modelType}-progress`);
+    const progressFill = document.getElementById(`${modelType}-progress-fill`);
+    const statusBadge = document.getElementById(`${modelType}-status`);
+    
+    // Disable button and show progress
+    btn.disabled = true;
+    btn.textContent = '⏳ Instalando...';
+    progressBar.style.display = 'block';
+    statusBadge.className = 'status-badge status-installing';
+    statusBadge.textContent = 'Instalando';
+    
+    try {
+        const response = await fetch('/api/ia/install-model', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ model: modelType })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Simulate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                progressFill.style.width = progress + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    btn.textContent = '✅ Instalado';
+                    statusBadge.className = 'status-badge status-installed';
+                    statusBadge.textContent = 'Instalado';
+                    showNotification(`✅ ${modelType === 'tinyllama' ? 'TinyLLama' : 'MobileNetV2'} instalado exitosamente`, 'success');
+                }
+            }, 200);
+        } else {
+            throw new Error(data.error || 'Error en la instalación');
+        }
+    } catch (error) {
+        btn.disabled = false;
+        btn.textContent = '🚀 Instalar ' + (modelType === 'tinyllama' ? 'TinyLLama' : 'MobileNetV2');
+        progressBar.style.display = 'none';
+        statusBadge.className = 'status-badge status-available';
+        statusBadge.textContent = 'Disponible';
+        showNotification(`❌ Error instalando ${modelType}: ${error.message}`, 'error');
+    }
+}
+
+// Show notification
+function showNotification(message, type, duration = 3000) {
+    const notification = document.createElement('div');
+    notification.className = 'w3-card w3-round-large';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        z-index: 2000;
+        min-width: 300px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    const colors = {
+        success: { bg: '#4CAF50', text: 'white' },
+        error: { bg: '#f44336', text: 'white' },
+        info: { bg: '#2196F3', text: 'white' }
+    };
+    
+    const color = colors[type] || colors.info;
+    notification.style.background = color.bg;
+    notification.style.color = color.text;
+    notification.innerHTML = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, duration);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    detectHardware();
+});
+</script>
+
+<style>
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+</style>
+{% endblock %}
